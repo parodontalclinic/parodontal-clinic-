@@ -320,6 +320,7 @@ tr:last-child td{border-bottom:none}
         <div class="card" style="overflow-y:auto;max-height:90vh">
           <div class="card-title">Plan de tratament</div>
           <div class="card-sub" id="plan-patient-name">Selectează un pacient</div>
+          <div id="plan-patient-notes" class="hidden" style="text-align:center;margin:-8px 0 16px;padding:10px 16px;background:#fef2f2;border:1.5px solid #fca5a5;border-radius:8px;font-size:13px;font-weight:600;color:#dc2626;line-height:1.5"></div>
           <div id="stages-editor"><div class="loading">Selectează un pacient pentru a începe planul</div></div>
           <div class="grand-total hidden" id="grand-total-editor"></div>
         </div>
@@ -1011,6 +1012,13 @@ function renderTreatment(){
   document.getElementById('plan-patient-name').innerHTML=pat
     ?'Plan pentru: <strong>'+esc(pat.name)+'</strong>'+(doctor?' &nbsp;|&nbsp; Medic: <strong>'+esc(doctor)+'</strong>':'')
     :'Selectează un pacient';
+  var notesEl=document.getElementById('plan-patient-notes');
+  if(pat && pat.notes && pat.notes.trim()){
+    notesEl.innerHTML='⚠ Observații: '+esc(pat.notes.trim());
+    notesEl.classList.remove('hidden');
+  } else {
+    notesEl.classList.add('hidden');
+  }
   if(!state.selectedPatientId||!state.stages.length){
     document.getElementById('stages-editor').innerHTML='<div class="loading">'+(state.selectedPatientId?'Nicio etapă — apasă "+ Adaugă etapă nouă"':'Selectează un pacient pentru a începe')+'</div>';
     document.getElementById('grand-total-editor').classList.add('hidden');
@@ -1034,7 +1042,7 @@ function renderTreatment(){
       +'<div class="stage-header">'
       +'<div style="font-weight:600;color:#0c3560;font-size:14px">'+esc(stage.name)+'</div>'
       +'<div style="display:flex;align-items:center;gap:8px">'
-      +'<span class="badge">'+fmt(stTotal(items))+'</span>'
+      +'<span style="background:#e0f2fe;color:#0369a1;font-weight:700;font-size:13px;padding:4px 12px;border-radius:8px;border:1px solid #bae6fd">'+fmt(stTotal(items))+'</span>'
       +'<button class="btn btn-danger" onclick="deleteStage(\''+stage.id+'\')" style="padding:4px 10px;font-size:11px">Șterge etapă</button>'
       +'</div></div>'+itemsHtml+'</div>';
   }).join('');
@@ -1160,7 +1168,10 @@ function renderPdfPreviewWithLang(lang){
       +'</div>'
       +'<div style="font-weight:600;color:#0c3560;margin-bottom:8px;font-size:13px">'+t.stage+' '+(idx+1)+': '+esc(stage.name)+'</div>'
       +'<table class="pdf-table"><thead><tr><th style="width:28px">✓</th><th>'+t.procedure+'</th><th style="text-align:right">'+t.price+'</th></tr></thead><tbody>'+rows+'</tbody></table>'
-      +'<div style="text-align:right;font-size:13px;font-weight:600;color:#0c3560;margin-top:10px;padding-top:8px;border-top:1px solid #e2e8f0">'+t.stageTotal+': '+fmt(stTotal(items))+'</div>'
+      +'<div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px;padding:10px 14px;background:#e0f2fe;border-radius:8px;border:1px solid #bae6fd">'
+      +'<span style="font-size:12px;font-weight:600;color:#0369a1">'+t.stageTotal+'</span>'
+      +'<span style="font-size:15px;font-weight:700;color:#0c3560">'+fmt(stTotal(items))+'</span>'
+      +'</div>'
       +(isLast?'<div style="margin-top:14px;padding:12px;background:#f0fdf4;border-radius:8px;font-size:12px;border:1px solid #bbf7d0"><strong>'+t.recommendations+':</strong> '+t.rec+'</div>'
         +'<div style="margin-top:14px;text-align:right;font-size:16px;font-weight:700;color:#0c3560;padding-top:12px;border-top:2px solid #0c3560">'+t.grandTotal+': '+fmt(grandTotal())+'</div>'
         +'<div style="margin-top:20px;display:grid;grid-template-columns:1fr 1fr;gap:20px;font-size:12px;color:#64748b">'
