@@ -752,6 +752,7 @@ function getDoctor(){
   var sel=document.getElementById('sel-doctor');
   return sel?sel.value:'';
 }
+function toggleDone(itemId){
   if(state.doneItems[itemId]) delete state.doneItems[itemId];
   else state.doneItems[itemId]=true;
   renderTreatment();
