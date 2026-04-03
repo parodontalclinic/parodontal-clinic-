@@ -498,15 +498,20 @@ function renderCart(){
     total.classList.add('hidden');
     return;
   }
-  var sum=cart.reduce(function(a,c){return a+c.proc.price;},0);
+  var sum=cart.reduce(function(a,c){var qty=c.teeth.length||1;return a+c.proc.price*qty;},0);
   el.innerHTML=cart.map(function(c){
+    var qty=c.teeth.length||1;
+    var lineTotal=c.proc.price*qty;
     return '<div class="cart-item">'
       +'<div class="cart-item-info">'
       +'<div class="cart-item-name">'+esc(c.proc.name)+'</div>'
-      +(c.teeth.length?'<div class="cart-item-teeth">Dinți: '+c.teeth.join(', ')+'</div>':'<div class="cart-item-teeth" style="color:#f59e0b">Fără dinte specificat</div>')
+      +(c.teeth.length
+        ?'<div class="cart-item-teeth">Dinți: '+c.teeth.join(', ')+' <span style="color:#0c3560;font-weight:600">(×'+qty+')</span></div>'
+        :'<div class="cart-item-teeth" style="color:#f59e0b">Fără dinte specificat</div>')
+      +(qty>1?'<div style="font-size:11px;color:#64748b;margin-top:2px">'+fmt(c.proc.price)+' × '+qty+' dinți</div>':'')
       +'</div>'
       +'<div style="display:flex;align-items:center;gap:8px">'
-      +'<div class="cart-item-price">'+fmt(c.proc.price)+'</div>'
+      +'<div class="cart-item-price">'+fmt(lineTotal)+'</div>'
       +'<button class="btn btn-danger btn-sm" onclick="removeFromCart('+c.id+')">✕</button>'
       +'</div></div>';
   }).join('');
