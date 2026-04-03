@@ -11,19 +11,19 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-siz
 .hidden{display:none!important}
 .login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0c3560}
 .login-box{background:#fff;border-radius:16px;padding:40px;width:100%;max-width:400px;box-shadow:0 20px 60px rgba(0,0,0,0.3)}
-.login-logo{text-align:center;margin-bottom:24px}
 .login-title{font-size:20px;font-weight:600;text-align:center;color:#0c3560;margin-bottom:4px}
 .login-sub{font-size:13px;color:#64748b;text-align:center;margin-bottom:24px}
+.login-logo-box{background:#0c3560;border-radius:10px;padding:10px 20px;display:inline-block;font-size:18px;font-weight:700;color:#fff;letter-spacing:2px;margin-bottom:16px}
 .login-box label{display:block;font-size:12px;color:#64748b;margin-bottom:4px;margin-top:14px}
 .login-box input{width:100%;border:1px solid #e2e8f0;border-radius:8px;padding:10px 12px;font-size:14px;outline:none;transition:border 0.15s}
 .login-box input:focus{border-color:#0c3560}
-.btn-login{width:100%;background:#0c3560;color:#fff;border:none;border-radius:8px;padding:12px;font-size:15px;font-weight:500;cursor:pointer;margin-top:20px;transition:background 0.15s}
+.btn-login{width:100%;background:#0c3560;color:#fff;border:none;border-radius:8px;padding:12px;font-size:15px;font-weight:500;cursor:pointer;margin-top:20px}
 .btn-login:hover{background:#185fa5}
 .login-error{color:#ef4444;font-size:13px;text-align:center;margin-top:12px;min-height:20px}
 .app{display:grid;grid-template-columns:220px 1fr;min-height:100vh}
 .sidebar{background:#0c3560;display:flex;flex-direction:column;padding:16px 12px}
 .sidebar-logo{display:flex;flex-direction:column;align-items:center;gap:8px;padding:16px 0 20px;border-bottom:1px solid rgba(255,255,255,0.1);margin-bottom:12px}
-.sidebar-logo .logo-box{background:rgba(255,255,255,0.15);border-radius:10px;padding:8px 14px;font-size:14px;font-weight:700;color:#fff;letter-spacing:1px}
+.logo-box{background:rgba(255,255,255,0.15);border-radius:10px;padding:8px 14px;font-size:13px;font-weight:700;color:#fff;letter-spacing:1px}
 .sidebar-logo .clinic-name{color:#fff;font-weight:600;font-size:13px;text-align:center}
 .sidebar-logo .clinic-sub{color:#90b4d4;font-size:11px}
 .sidebar-btn{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:8px;border:none;background:transparent;cursor:pointer;width:100%;text-align:left;font-size:13px;color:rgba(255,255,255,0.7);transition:all 0.15s;margin-bottom:2px}
@@ -32,7 +32,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-siz
 .sidebar-spacer{flex:1}
 .sidebar-user{padding:12px;border-top:1px solid rgba(255,255,255,0.1);margin-top:8px}
 .sidebar-user .user-email{color:#90b4d4;font-size:11px;margin-bottom:8px;word-break:break-all}
-.btn-logout{width:100%;background:rgba(255,255,255,0.1);color:#fff;border:none;border-radius:6px;padding:8px;font-size:12px;cursor:pointer;transition:background 0.15s}
+.btn-logout{width:100%;background:rgba(255,255,255,0.1);color:#fff;border:none;border-radius:6px;padding:8px;font-size:12px;cursor:pointer}
 .btn-logout:hover{background:rgba(255,255,255,0.2)}
 .main{display:flex;flex-direction:column;gap:16px;padding:20px;overflow-y:auto}
 .topbar{background:#fff;border-radius:12px;padding:14px 20px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 1px 3px rgba(0,0,0,0.05)}
@@ -63,6 +63,8 @@ textarea{resize:vertical;min-height:64px}
 .btn:hover{background:#f1f5f9}
 .btn-primary{background:#0c3560;color:#fff;border-color:#0c3560}
 .btn-primary:hover{background:#185fa5;border-color:#185fa5}
+.btn-success{background:#16a34a;color:#fff;border-color:#16a34a}
+.btn-success:hover{background:#15803d}
 .btn-danger{color:#ef4444;border-color:#fecaca}
 .btn-danger:hover{background:#fef2f2}
 .btn-full{width:100%;justify-content:center;margin-top:10px}
@@ -78,7 +80,7 @@ td{padding:8px 10px;border-bottom:1px solid #f1f5f9;color:#374151}
 tr:last-child td{border-bottom:none}
 .stage-block{border:1px solid #e2e8f0;border-radius:10px;padding:16px;margin-bottom:12px}
 .stage-header{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;flex-wrap:wrap}
-.item-row{display:grid;grid-template-columns:2fr 100px 80px;gap:8px;align-items:center;background:#f8fafc;border-radius:8px;padding:10px;margin-bottom:8px}
+.item-row{display:grid;grid-template-columns:2fr 120px 80px;gap:8px;align-items:center;background:#f8fafc;border-radius:8px;padding:10px;margin-bottom:8px}
 .item-name{font-size:13px;font-weight:500;color:#1e293b}
 .item-price{font-size:13px;color:#0c3560;font-weight:600;text-align:right}
 .grand-total{text-align:right;font-weight:700;font-size:16px;color:#0c3560;margin-top:14px;padding-top:14px;border-top:1px solid #e2e8f0}
@@ -95,14 +97,34 @@ tr:last-child td{border-bottom:none}
 .loading{text-align:center;padding:30px;color:#94a3b8;font-size:13px}
 .notif{position:fixed;bottom:24px;right:24px;background:#0c3560;color:#fff;padding:12px 20px;border-radius:10px;font-size:13px;font-weight:500;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,0.2);transform:translateY(80px);opacity:0;transition:all 0.3s}
 .notif.show{transform:translateY(0);opacity:1}
-.proc-selector{background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:16px;margin-bottom:12px}
-.proc-selector label{margin-top:8px}
-.proc-selector label:first-child{margin-top:0}
-.price-preview{display:flex;align-items:center;justify-content:space-between;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:10px 14px;margin-top:10px}
-.price-preview .proc-name-prev{font-size:13px;color:#1e293b;font-weight:500}
-.price-preview .proc-price-prev{font-size:16px;font-weight:700;color:#0c3560}
-.status-dot{width:8px;height:8px;border-radius:50%;background:#22c55e;display:inline-block;margin-right:6px}
-.status-badge{display:inline-flex;align-items:center;padding:4px 12px;border-radius:999px;font-size:12px;background:#f0fdf4;color:#166534;border:1px solid #bbf7d0}
+
+/* SELECTOR PROCEDURI */
+.proc-selector-box{background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:16px;margin-bottom:12px}
+.proc-selector-title{font-weight:600;font-size:13px;color:#0c3560;margin-bottom:12px}
+.price-tag{background:#eff6ff;border:1px solid #bfdbfe;border-radius:6px;padding:6px 12px;font-size:13px;font-weight:700;color:#0c3560;margin-top:8px;display:flex;align-items:center;justify-content:space-between}
+
+/* DINTI */
+.teeth-section{margin-top:10px}
+.teeth-label{font-size:12px;font-weight:500;color:#64748b;margin-bottom:6px}
+.teeth-groups{display:flex;flex-direction:column;gap:6px}
+.teeth-group-label{font-size:11px;color:#94a3b8;margin-bottom:3px;font-style:italic}
+.teeth-row{display:flex;flex-wrap:wrap;gap:4px}
+.tooth-btn{width:34px;height:34px;border:1px solid #e2e8f0;border-radius:6px;background:#fff;cursor:pointer;font-size:11px;font-weight:600;color:#64748b;transition:all 0.15s;display:flex;align-items:center;justify-content:center}
+.tooth-btn:hover{border-color:#0c3560;color:#0c3560;background:#eff6ff}
+.tooth-btn.selected{border-color:#0c3560;background:#0c3560;color:#fff}
+.teeth-actions{display:flex;gap:6px;margin-top:6px}
+.btn-sm{padding:4px 10px;font-size:11px;border-radius:6px}
+
+/* COS PROCEDURI */
+.cart-section{margin-top:14px}
+.cart-title{font-size:13px;font-weight:600;color:#0c3560;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between}
+.cart-item{display:flex;align-items:start;justify-content:space-between;gap:8px;background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:10px 12px;margin-bottom:6px}
+.cart-item-info{flex:1}
+.cart-item-name{font-size:13px;font-weight:500;color:#1e293b}
+.cart-item-teeth{font-size:11px;color:#64748b;margin-top:3px}
+.cart-item-price{font-size:13px;font-weight:700;color:#0c3560;white-space:nowrap}
+.cart-empty{text-align:center;color:#94a3b8;font-size:12px;padding:16px;background:#f8fafc;border-radius:8px;border:1px dashed #e2e8f0}
+.cart-total{text-align:right;font-weight:700;font-size:14px;color:#0c3560;padding:10px 0;border-top:1px solid #e2e8f0;margin-top:4px}
 </style>
 </head>
 <body>
@@ -111,8 +133,8 @@ tr:last-child td{border-bottom:none}
 <!-- LOGIN -->
 <div class="login-wrap" id="login-screen">
   <div class="login-box">
-    <div class="login-logo">
-      <div style="background:#0c3560;border-radius:10px;padding:10px 20px;display:inline-block;font-size:18px;font-weight:700;color:#fff;letter-spacing:2px">PARODONTAL</div>
+    <div style="text-align:center;margin-bottom:20px">
+      <div class="login-logo-box">PARODONTAL</div>
     </div>
     <div class="login-title">Parodontal Clinic</div>
     <div class="login-sub">Planuri de tratament stomatologic</div>
@@ -137,10 +159,10 @@ tr:last-child td{border-bottom:none}
       <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>Pacienți
     </button>
     <button class="sidebar-btn" id="sbtn-treatment" onclick="switchTab('treatment')">
-      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h4"/></svg>Plan tratament
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg>Plan tratament
     </button>
     <button class="sidebar-btn" id="sbtn-pdf" onclick="switchTab('pdf')">
-      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8"/></svg>Export PDF
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>Export PDF
     </button>
     <button class="sidebar-btn" id="sbtn-procedures" onclick="switchTab('procedures')">
       <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M8 12h8M12 8v8"/></svg>Catalog proceduri
@@ -161,11 +183,9 @@ tr:last-child td{border-bottom:none}
           <p>Planuri de tratament stomatologic</p>
         </div>
       </div>
-      <div style="display:flex;gap:8px;align-items:center">
-        <button class="btn btn-primary" onclick="switchTab('pdf')">
-          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>Export PDF
-        </button>
-      </div>
+      <button class="btn btn-primary" onclick="switchTab('pdf')">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>Export PDF
+      </button>
     </div>
 
     <div class="stats">
@@ -192,13 +212,11 @@ tr:last-child td{border-bottom:none}
           <label>Telefon</label><input id="p-phone" placeholder="+373 ...">
           <label>Diagnostic</label><textarea id="p-diag" placeholder="Descriere diagnostic..."></textarea>
           <label>Observații</label><textarea id="p-notes" placeholder="Note suplimentare..."></textarea>
-          <button class="btn btn-primary btn-full" onclick="addPatient()">
-            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Salvează pacient
-          </button>
+          <button class="btn btn-primary btn-full" onclick="addPatient()">+ Salvează pacient</button>
         </div>
         <div class="card">
           <div class="card-title">Listă pacienți</div>
-          <div class="card-sub">Click pe pacient pentru a-l selecta și a construi planul</div>
+          <div class="card-sub">Click pe pacient pentru a-l selecta</div>
           <div class="search-wrap">
             <svg class="search-icon" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
             <input id="patient-search" placeholder="Caută după nume, telefon..." oninput="renderPatients()">
@@ -211,9 +229,10 @@ tr:last-child td{border-bottom:none}
     <!-- PLAN TRATAMENT -->
     <div id="tab-treatment" class="tab-content">
       <div class="two-col">
-        <div class="card">
-          <div class="card-title">Adaugă proceduri la plan</div>
-          <div class="card-sub">Selectează pacientul și adaugă proceduri din catalog</div>
+        <!-- STANGA: selector -->
+        <div class="card" style="overflow-y:auto;max-height:90vh">
+          <div class="card-title">Construiește planul</div>
+          <div class="card-sub">Selectează proceduri și dinți, apoi adaugă în plan</div>
 
           <label>Pacient activ</label>
           <select id="sel-patient" onchange="onSelectPatient()">
@@ -224,17 +243,15 @@ tr:last-child td{border-bottom:none}
           <select id="sel-stage">
             <option value="">— Selectează etapă —</option>
           </select>
-
-          <button class="btn btn-full" onclick="addStage()" style="margin-top:8px;margin-bottom:4px">
-            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Adaugă etapă nouă
-          </button>
+          <button class="btn btn-full" onclick="addStage()" style="margin-top:6px">+ Adaugă etapă nouă</button>
 
           <hr class="sep">
 
-          <div class="proc-selector">
-            <div style="font-weight:600;font-size:13px;color:#0c3560;margin-bottom:12px">Selectează procedura</div>
+          <!-- SELECTOR PROCEDURA -->
+          <div class="proc-selector-box">
+            <div class="proc-selector-title">Selectează procedura</div>
 
-            <label>Categorie</label>
+            <label style="margin-top:0">Categorie</label>
             <select id="sel-category" onchange="onCategoryChange()">
               <option value="">— Alege categoria —</option>
               <option value="Diagnostic">Diagnostic</option>
@@ -251,21 +268,42 @@ tr:last-child td{border-bottom:none}
               <option value="">— Alege mai întâi categoria —</option>
             </select>
 
-            <div class="price-preview hidden" id="price-preview">
-              <span class="proc-name-prev" id="prev-name"></span>
-              <span class="proc-price-prev" id="prev-price"></span>
+            <div id="price-tag" class="price-tag hidden">
+              <span id="prev-name" style="font-weight:500;font-size:13px"></span>
+              <span id="prev-price" style="font-size:15px"></span>
             </div>
 
-            <label>Cantitate</label>
-            <input type="number" id="proc-qty" value="1" min="1" max="50" style="width:80px">
+            <!-- DINTI -->
+            <div class="teeth-section">
+              <div class="teeth-label">Poziție dinte (selectează unul sau mai mulți)</div>
+              <div class="teeth-groups" id="teeth-grid"></div>
+              <div class="teeth-actions">
+                <button class="btn btn-sm" onclick="clearTeeth()">Golește selecția</button>
+                <span id="selected-teeth-count" style="font-size:12px;color:#64748b;align-self:center"></span>
+              </div>
+            </div>
 
-            <button class="btn btn-primary btn-full" onclick="addItemFromCatalog()" style="margin-top:12px">
-              <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Adaugă în plan
+            <button class="btn btn-primary btn-full" onclick="addToCart()" style="margin-top:14px">
+              + Adaugă în coș
+            </button>
+          </div>
+
+          <!-- COS -->
+          <div class="cart-section">
+            <div class="cart-title">
+              <span>Coș proceduri (<span id="cart-count">0</span>)</span>
+              <button class="btn btn-sm btn-danger" onclick="clearCart()">Golește coșul</button>
+            </div>
+            <div id="cart-items"><div class="cart-empty">Nicio procedură adăugată în coș.</div></div>
+            <div class="cart-total hidden" id="cart-total"></div>
+            <button class="btn btn-success btn-full" id="btn-add-all" onclick="addAllToplan()" style="font-size:14px;padding:12px">
+              ✓ Adaugă toate în planul de tratament
             </button>
           </div>
         </div>
 
-        <div class="card">
+        <!-- DREAPTA: plan -->
+        <div class="card" style="overflow-y:auto;max-height:90vh">
           <div class="card-title">Plan de tratament</div>
           <div class="card-sub" id="plan-patient-name">Selectează un pacient</div>
           <div id="stages-editor"><div class="loading">Selectează un pacient pentru a începe planul</div></div>
@@ -291,7 +329,7 @@ tr:last-child td{border-bottom:none}
           <label>Adresă</label>
           <input id="clinic-address" value="Chișinău, str. Nicolai Zelinski 15/3" oninput="renderPdfPreview()">
           <label>Medic curant</label>
-          <input id="clinic-doctor" value="" placeholder="Dr. Nume Prenume" oninput="renderPdfPreview()">
+          <input id="clinic-doctor" placeholder="Dr. Nume Prenume" oninput="renderPdfPreview()">
           <label>Limbă document</label>
           <select id="pdf-lang" onchange="renderPdfPreview()">
             <option value="ro">Română</option>
@@ -309,12 +347,12 @@ tr:last-child td{border-bottom:none}
       </div>
     </div>
 
-    <!-- CATALOG PROCEDURI -->
+    <!-- CATALOG -->
     <div id="tab-procedures" class="tab-content">
       <div class="two-col">
         <div class="card">
           <div class="card-title">Adaugă procedură nouă</div>
-          <div class="card-sub">Extinde catalogul cu proceduri noi</div>
+          <div class="card-sub">Extinde catalogul</div>
           <label>Categorie</label>
           <select id="new-proc-cat">
             <option value="Diagnostic">Diagnostic</option>
@@ -352,7 +390,6 @@ tr:last-child td{border-bottom:none}
         </div>
       </div>
     </div>
-
   </main>
 </div>
 
@@ -362,26 +399,26 @@ const SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSI
 const{createClient}=supabase;
 const sb=createClient(SUPABASE_URL,SUPABASE_KEY);
 
-var state={
-  currentUser:null,
-  patients:[],
-  procedures:[],
-  stages:[],
-  stageItems:{},
-  selectedPatientId:null,
-  activeStageId:null,
-  pdfPatientId:null
-};
+var state={currentUser:null,patients:[],procedures:[],stages:[],stageItems:{},selectedPatientId:null,activeStageId:null,pdfPatientId:null};
+var cart=[];
+var selectedTeeth=[];
+
+var TEETH_GROUPS=[
+  {label:'Maxilar drept adult',teeth:['18','17','16','15','14','13','12','11']},
+  {label:'Maxilar stâng adult',teeth:['21','22','23','24','25','26','27','28']},
+  {label:'Mandibulă stâng adult',teeth:['31','32','33','34','35','36','37','38']},
+  {label:'Mandibulă drept adult',teeth:['41','42','43','44','45','46','47','48']},
+  {label:'Maxilar drept copil',teeth:['51','52','53','54','55']},
+  {label:'Maxilar stâng copil',teeth:['61','62','63','64','65']},
+  {label:'Mandibulă stâng copil',teeth:['71','72','73','74','75']},
+  {label:'Mandibulă drept copil',teeth:['81','82','83','84','85']}
+];
 
 var labels={
-  ro:{patient:'Pacient',doctor:'Medic curant',stage:'Etapă',procedure:'Procedură',price:'Preț',stageTotal:'Total etapă',grandTotal:'Total general',planTitle:'Plan de tratament stomatologic',recommendations:'Recomandări',date:'Data'},
-  ru:{patient:'Пациент',doctor:'Лечащий врач',stage:'Этап',procedure:'Процедура',price:'Цена',stageTotal:'Итого этап',grandTotal:'Общая сумма',planTitle:'План стоматологического лечения',recommendations:'Рекомендации',date:'Дата'}
+  ro:{patient:'Pacient',doctor:'Medic curant',stage:'Etapă',procedure:'Procedură',price:'Preț',stageTotal:'Total etapă',grandTotal:'Total general',planTitle:'Plan de tratament stomatologic',recommendations:'Recomandări',date:'Data',tooth:'Dinte'},
+  ru:{patient:'Пациент',doctor:'Лечащий врач',stage:'Этап',procedure:'Процедура',price:'Цена',stageTotal:'Итого этап',grandTotal:'Общая сумма',planTitle:'План стоматологического лечения',recommendations:'Рекомендации',date:'Дата',tooth:'Зуб'}
 };
-
-var recs={
-  ro:'Igienă orală atentă, controale periodice și respectarea etapelor de tratament.',
-  ru:'Тщательная гигиена полости рта, регулярные осмотры и соблюдение этапов лечения.'
-};
+var recs={ro:'Igienă orală atentă, controale periodice și respectarea etapelor de tratament.',ru:'Тщательная гигиена полости рта, регулярные осмотры и соблюдение этапов лечения.'};
 
 function fmt(v){return new Intl.NumberFormat('ro-RO',{maximumFractionDigits:0}).format(v)+' MDL';}
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
@@ -391,12 +428,119 @@ function getPat(id){return state.patients.find(function(p){return p.id===(id||st
 
 function showNotif(msg,ok){
   var n=document.getElementById('notif');
-  n.textContent=msg;
-  n.style.background=ok===false?'#ef4444':'#0c3560';
-  n.classList.add('show');
-  setTimeout(function(){n.classList.remove('show');},2500);
+  n.textContent=msg;n.style.background=ok===false?'#ef4444':'#0c3560';
+  n.classList.add('show');setTimeout(function(){n.classList.remove('show');},2500);
 }
 
+// ---- TEETH GRID ----
+function buildTeethGrid(){
+  var grid=document.getElementById('teeth-grid');
+  grid.innerHTML=TEETH_GROUPS.map(function(g){
+    return '<div style="margin-bottom:8px">'
+      +'<div class="teeth-group-label">'+g.label+'</div>'
+      +'<div class="teeth-row">'+g.teeth.map(function(t){
+        return '<button class="tooth-btn" id="tooth-'+t+'" onclick="toggleTooth(\''+t+'\')">'+t+'</button>';
+      }).join('')+'</div></div>';
+  }).join('');
+}
+
+function toggleTooth(t){
+  var idx=selectedTeeth.indexOf(t);
+  if(idx>=0){selectedTeeth.splice(idx,1);document.getElementById('tooth-'+t).classList.remove('selected');}
+  else{selectedTeeth.push(t);document.getElementById('tooth-'+t).classList.add('selected');}
+  updateTeethCount();
+}
+
+function clearTeeth(){
+  selectedTeeth=[];
+  document.querySelectorAll('.tooth-btn').forEach(function(b){b.classList.remove('selected');});
+  updateTeethCount();
+}
+
+function updateTeethCount(){
+  var el=document.getElementById('selected-teeth-count');
+  if(selectedTeeth.length>0) el.textContent=selectedTeeth.length+' dinte(i) selectat(i): '+selectedTeeth.join(', ');
+  else el.textContent='';
+}
+
+// ---- CART ----
+function addToCart(){
+  var procId=document.getElementById('sel-procedure').value;
+  var proc=state.procedures.find(function(p){return p.id===procId;});
+  if(!proc){showNotif('Selectează o procedură!',false);return;}
+  var teeth=selectedTeeth.slice();
+  cart.push({id:Date.now(),proc:proc,teeth:teeth});
+  clearTeeth();
+  document.getElementById('sel-category').value='';
+  document.getElementById('sel-procedure').innerHTML='<option value="">— Alege mai întâi categoria —</option>';
+  document.getElementById('price-tag').classList.add('hidden');
+  renderCart();
+  showNotif('✓ '+proc.name+' adăugat în coș!');
+}
+
+function removeFromCart(id){
+  cart=cart.filter(function(c){return c.id!==id;});
+  renderCart();
+}
+
+function clearCart(){
+  cart=[];renderCart();
+}
+
+function renderCart(){
+  var el=document.getElementById('cart-items');
+  var count=document.getElementById('cart-count');
+  var total=document.getElementById('cart-total');
+  var btnAll=document.getElementById('btn-add-all');
+  count.textContent=cart.length;
+  if(!cart.length){
+    el.innerHTML='<div class="cart-empty">Nicio procedură adăugată în coș.</div>';
+    total.classList.add('hidden');
+    return;
+  }
+  var sum=cart.reduce(function(a,c){return a+c.proc.price;},0);
+  el.innerHTML=cart.map(function(c){
+    return '<div class="cart-item">'
+      +'<div class="cart-item-info">'
+      +'<div class="cart-item-name">'+esc(c.proc.name)+'</div>'
+      +(c.teeth.length?'<div class="cart-item-teeth">Dinți: '+c.teeth.join(', ')+'</div>':'<div class="cart-item-teeth" style="color:#f59e0b">Fără dinte specificat</div>')
+      +'</div>'
+      +'<div style="display:flex;align-items:center;gap:8px">'
+      +'<div class="cart-item-price">'+fmt(c.proc.price)+'</div>'
+      +'<button class="btn btn-danger btn-sm" onclick="removeFromCart('+c.id+')">✕</button>'
+      +'</div></div>';
+  }).join('');
+  total.textContent='Total coș: '+fmt(sum);
+  total.classList.remove('hidden');
+}
+
+async function addAllToplan(){
+  if(!cart.length){showNotif('Coșul este gol!',false);return;}
+  var stageId=document.getElementById('sel-stage').value||state.activeStageId;
+  if(!state.selectedPatientId){showNotif('Selectează mai întâi un pacient!',false);return;}
+  if(!stageId){showNotif('Selectează sau creează o etapă!',false);return;}
+  state.activeStageId=stageId;
+  var added=0;
+  for(var c of cart){
+    if(c.teeth.length===0){
+      var obj={stage_id:stageId,name:c.proc.name,price:c.proc.price,category:c.proc.category,explanation:''};
+      var{data,error}=await sb.from('stage_items').insert([obj]).select().single();
+      if(!error){if(!state.stageItems[stageId])state.stageItems[stageId]=[];state.stageItems[stageId].push(data);added++;}
+    } else {
+      for(var tooth of c.teeth){
+        var name=c.proc.name+' (d.'+tooth+')';
+        var obj2={stage_id:stageId,name:name,price:c.proc.price,category:c.proc.category,explanation:''};
+        var{data:d2,error:e2}=await sb.from('stage_items').insert([obj2]).select().single();
+        if(!e2){if(!state.stageItems[stageId])state.stageItems[stageId]=[];state.stageItems[stageId].push(d2);added++;}
+      }
+    }
+  }
+  cart=[];renderCart();
+  renderTreatment();updateStats();
+  showNotif('✓ '+added+' proceduri adăugate în plan!');
+}
+
+// ---- AUTH ----
 async function doLogin(){
   var email=document.getElementById('login-email').value.trim();
   var pass=document.getElementById('login-password').value;
@@ -405,55 +549,44 @@ async function doLogin(){
   if(!email||!pass){err.textContent='Completează email și parolă.';return;}
   var{data,error}=await sb.auth.signInWithPassword({email,password:pass});
   if(error){err.textContent='Email sau parolă incorectă.';return;}
-  state.currentUser=data.user;
-  showApp();
+  state.currentUser=data.user;showApp();
 }
-
 async function doLogout(){
   await sb.auth.signOut();
   document.getElementById('app-screen').classList.add('hidden');
   document.getElementById('login-screen').classList.remove('hidden');
-  state=Object.assign(state,{patients:[],procedures:[],stages:[],stageItems:{},selectedPatientId:null,activeStageId:null});
 }
-
 async function checkSession(){
   var{data}=await sb.auth.getSession();
   if(data.session){state.currentUser=data.session.user;showApp();}
 }
-
 function showApp(){
   document.getElementById('login-screen').classList.add('hidden');
   document.getElementById('app-screen').classList.remove('hidden');
   document.getElementById('user-email').textContent=state.currentUser.email;
+  buildTeethGrid();
   loadAll();
 }
 
+// ---- DATA ----
 async function loadAll(){
-  var[pr,pc]=[
+  var[{data:patients},{data:procedures}]=await Promise.all([
     sb.from('patients').select('*').order('created_at',{ascending:false}),
     sb.from('procedures').select('*').order('category').order('name')
-  ];
-  var[{data:patients},{data:procedures}]=await Promise.all([pr,pc]);
+  ]);
   state.patients=patients||[];
   state.procedures=procedures||[];
-  updateStats();
-  renderPatients();
-  renderProcedures();
-  renderPdfPatientSelect();
-  populatePatientSelect();
+  updateStats();renderPatients();renderProcedures();renderPdfPatientSelect();populatePatientSelect();
 }
 
 async function loadStagesForPatient(patientId){
   var{data:stages}=await sb.from('stages').select('*').eq('patient_id',patientId).order('position');
-  state.stages=stages||[];
-  state.stageItems={};
+  state.stages=stages||[];state.stageItems={};
   for(var s of state.stages){
     var{data:items}=await sb.from('stage_items').select('*').eq('stage_id',s.id).order('created_at');
     state.stageItems[s.id]=items||[];
   }
-  if(state.stages.length>0&&!state.activeStageId){
-    state.activeStageId=state.stages[0].id;
-  }
+  if(state.stages.length>0&&!state.activeStageId)state.activeStageId=state.stages[0].id;
 }
 
 function updateStats(){
@@ -472,54 +605,40 @@ function renderPatients(){
     return '<div class="patient-card'+sel+'" onclick="selectPatient(\''+p.id+'\')">'
       +'<div style="font-weight:600;font-size:13px;color:#0c3560">'+esc(p.name)+'</div>'
       +'<div style="font-size:12px;color:#64748b;margin-top:2px">'+esc(p.phone||'—')+'</div>'
-      +'<div style="font-size:12px;margin-top:8px;color:#374151"><strong>Diagnostic:</strong> '+esc(p.diagnosis||'—')+'</div>'
+      +'<div style="font-size:12px;margin-top:8px"><strong>Diagnostic:</strong> '+esc(p.diagnosis||'—')+'</div>'
       +'</div>';
   }).join('');
 }
 
 async function selectPatient(id){
-  state.selectedPatientId=id;
-  state.activeStageId=null;
-  state.stages=[];
-  state.stageItems={};
+  state.selectedPatientId=id;state.activeStageId=null;state.stages=[];state.stageItems={};
   await loadStagesForPatient(id);
-  renderPatients();
-  renderTreatment();
-  updateStats();
+  renderPatients();renderTreatment();updateStats();
 }
 
 async function addPatient(){
   var name=document.getElementById('p-name').value.trim();
-  if(!name){showNotif('Introduceți numele pacientului!',false);return;}
+  if(!name){showNotif('Introduceți numele!',false);return;}
   var obj={name,phone:document.getElementById('p-phone').value,diagnosis:document.getElementById('p-diag').value,notes:document.getElementById('p-notes').value};
   var{data,error}=await sb.from('patients').insert([obj]).select().single();
   if(error){showNotif('Eroare: '+error.message,false);return;}
   state.patients.unshift(data);
   ['p-name','p-phone','p-diag','p-notes'].forEach(function(id){document.getElementById(id).value='';});
-  state.selectedPatientId=data.id;
-  state.stages=[];state.stageItems={};state.activeStageId=null;
-  populatePatientSelect();
-  renderPdfPatientSelect();
-  renderPatients();
-  renderTreatment();
-  updateStats();
+  state.selectedPatientId=data.id;state.stages=[];state.stageItems={};state.activeStageId=null;
+  populatePatientSelect();renderPdfPatientSelect();renderPatients();renderTreatment();updateStats();
   showNotif('✓ Pacient salvat!');
 }
 
 function populatePatientSelect(){
   var sel=document.getElementById('sel-patient');
-  var cur=sel.value;
   sel.innerHTML='<option value="">— Selectează pacient —</option>'
     +state.patients.map(function(p){return'<option value="'+p.id+'"'+(p.id===state.selectedPatientId?' selected':'')+'>'+esc(p.name)+'</option>';}).join('');
-  if(cur) sel.value=cur;
 }
 
 function renderPdfPatientSelect(){
   var sel=document.getElementById('pdf-patient-sel');
-  var cur=sel.value;
   sel.innerHTML='<option value="">— Selectează pacient —</option>'
     +state.patients.map(function(p){return'<option value="'+p.id+'">'+esc(p.name)+'</option>';}).join('');
-  if(cur) sel.value=cur;
 }
 
 async function onSelectPatient(){
@@ -533,11 +652,8 @@ async function onPdfPatientChange(){
   if(!id)return;
   state.pdfPatientId=id;
   if(id!==state.selectedPatientId){
-    state.selectedPatientId=id;
-    state.activeStageId=null;
-    state.stages=[];state.stageItems={};
-    await loadStagesForPatient(id);
-    updateStats();
+    state.selectedPatientId=id;state.activeStageId=null;state.stages=[];state.stageItems={};
+    await loadStagesForPatient(id);updateStats();
   }
   renderPdfPreview();
 }
@@ -545,23 +661,17 @@ async function onPdfPatientChange(){
 function onCategoryChange(){
   var cat=document.getElementById('sel-category').value;
   var filtered=state.procedures.filter(function(p){return p.category===cat;});
-  var sel=document.getElementById('sel-procedure');
-  sel.innerHTML='<option value="">— Alege procedura —</option>'
+  document.getElementById('sel-procedure').innerHTML='<option value="">— Alege procedura —</option>'
     +filtered.map(function(p){return'<option value="'+p.id+'">'+esc(p.name)+'</option>';}).join('');
-  document.getElementById('price-preview').classList.add('hidden');
+  document.getElementById('price-tag').classList.add('hidden');
 }
 
 function onProcedureChange(){
   var id=document.getElementById('sel-procedure').value;
   var proc=state.procedures.find(function(p){return p.id===id;});
-  var prev=document.getElementById('price-preview');
-  if(proc){
-    document.getElementById('prev-name').textContent=proc.name;
-    document.getElementById('prev-price').textContent=fmt(proc.price||0);
-    prev.classList.remove('hidden');
-  } else {
-    prev.classList.add('hidden');
-  }
+  var tag=document.getElementById('price-tag');
+  if(proc){document.getElementById('prev-name').textContent=proc.name;document.getElementById('prev-price').textContent=fmt(proc.price||0);tag.classList.remove('hidden');}
+  else tag.classList.add('hidden');
 }
 
 function renderStageSelect(){
@@ -571,19 +681,14 @@ function renderStageSelect(){
 }
 
 function renderTreatment(){
-  populatePatientSelect();
-  renderStageSelect();
+  populatePatientSelect();renderStageSelect();
   var pat=getPat();
-  var planName=document.getElementById('plan-patient-name');
-  if(pat) planName.textContent='Plan pentru: '+pat.name;
-  else planName.textContent='Selectează un pacient';
-
+  document.getElementById('plan-patient-name').textContent=pat?'Plan pentru: '+pat.name:'Selectează un pacient';
   if(!state.selectedPatientId||!state.stages.length){
-    document.getElementById('stages-editor').innerHTML='<div class="loading">'+(state.selectedPatientId?'Nicio etapă — apasă "Adaugă etapă nouă"':'Selectează un pacient pentru a începe planul')+'</div>';
+    document.getElementById('stages-editor').innerHTML='<div class="loading">'+(state.selectedPatientId?'Nicio etapă — apasă "+ Adaugă etapă nouă"':'Selectează un pacient pentru a începe')+'</div>';
     document.getElementById('grand-total-editor').classList.add('hidden');
     return;
   }
-
   document.getElementById('grand-total-editor').classList.remove('hidden');
   document.getElementById('stages-editor').innerHTML=state.stages.map(function(stage){
     var items=state.stageItems[stage.id]||[];
@@ -591,60 +696,24 @@ function renderTreatment(){
       return '<div class="item-row">'
         +'<div class="item-name">'+esc(item.name)+'</div>'
         +'<div class="item-price">'+fmt(item.price||0)+'</div>'
-        +'<button class="btn btn-danger" onclick="removeItem(\''+stage.id+'\',\''+item.id+'\')" style="padding:4px 10px;font-size:12px">Șterge</button>'
+        +'<button class="btn btn-danger" onclick="removeItem(\''+stage.id+'\',\''+item.id+'\')" style="padding:4px 10px;font-size:11px">Șterge</button>'
         +'</div>';
     }).join(''):'<div style="color:#94a3b8;font-size:12px;padding:6px 0">Nicio procedură adăugată.</div>';
-
     return '<div class="stage-block">'
       +'<div class="stage-header">'
-      +'<div style="font-weight:600;color:#0c3560">'+esc(stage.name)+'</div>'
+      +'<div style="font-weight:600;color:#0c3560;font-size:14px">'+esc(stage.name)+'</div>'
       +'<div style="display:flex;align-items:center;gap:8px">'
       +'<span class="badge">'+fmt(stTotal(items))+'</span>'
-      +'<button class="btn btn-danger" onclick="deleteStage(\''+stage.id+'\')" style="padding:4px 10px;font-size:12px">Șterge etapă</button>'
-      +'</div></div>'
-      +itemsHtml+'</div>';
+      +'<button class="btn btn-danger" onclick="deleteStage(\''+stage.id+'\')" style="padding:4px 10px;font-size:11px">Șterge etapă</button>'
+      +'</div></div>'+itemsHtml+'</div>';
   }).join('');
-
   document.getElementById('grand-total-editor').textContent='Total general: '+fmt(grandTotal());
-}
-
-async function addItemFromCatalog(){
-  var stageId=document.getElementById('sel-stage').value||state.activeStageId;
-  var procId=document.getElementById('sel-procedure').value;
-  var qty=parseInt(document.getElementById('proc-qty').value)||1;
-
-  if(!state.selectedPatientId){showNotif('Selectează mai întâi un pacient!',false);return;}
-  if(!stageId){showNotif('Selectează sau creează o etapă!',false);return;}
-  if(!procId){showNotif('Selectează o procedură din catalog!',false);return;}
-
-  var proc=state.procedures.find(function(p){return p.id===procId;});
-  if(!proc)return;
-
-  state.activeStageId=stageId;
-
-  for(var i=0;i<qty;i++){
-    var obj={stage_id:stageId,name:proc.name,price:proc.price||0,category:proc.category,explanation:''};
-    var{data,error}=await sb.from('stage_items').insert([obj]).select().single();
-    if(error){showNotif('Eroare: '+error.message,false);return;}
-    if(!state.stageItems[stageId])state.stageItems[stageId]=[];
-    state.stageItems[stageId].push(data);
-  }
-
-  document.getElementById('sel-category').value='';
-  document.getElementById('sel-procedure').innerHTML='<option value="">— Alege mai întâi categoria —</option>';
-  document.getElementById('proc-qty').value='1';
-  document.getElementById('price-preview').classList.add('hidden');
-
-  renderTreatment();
-  updateStats();
-  showNotif('✓ '+proc.name+' adăugat în plan!');
 }
 
 async function removeItem(stageId,itemId){
   await sb.from('stage_items').delete().eq('id',itemId);
   state.stageItems[stageId]=(state.stageItems[stageId]||[]).filter(function(it){return it.id!==itemId;});
-  renderTreatment();updateStats();
-  showNotif('Procedură eliminată din plan.');
+  renderTreatment();updateStats();showNotif('Procedură eliminată.');
 }
 
 async function deleteStage(stageId){
@@ -653,52 +722,44 @@ async function deleteStage(stageId){
   state.stages=state.stages.filter(function(s){return s.id!==stageId;});
   delete state.stageItems[stageId];
   if(state.activeStageId===stageId)state.activeStageId=state.stages.length?state.stages[0].id:null;
-  renderTreatment();updateStats();
-  showNotif('Etapă ștearsă.');
+  renderTreatment();updateStats();showNotif('Etapă ștearsă.');
 }
 
 async function addStage(){
   if(!state.selectedPatientId){showNotif('Selectează mai întâi un pacient!',false);return;}
-  var pos=state.stages.length;
-  var obj={patient_id:state.selectedPatientId,name:'Etapa '+(pos+1),position:pos};
+  var obj={patient_id:state.selectedPatientId,name:'Etapa '+(state.stages.length+1),position:state.stages.length};
   var{data,error}=await sb.from('stages').insert([obj]).select().single();
   if(error){showNotif('Eroare: '+error.message,false);return;}
-  state.stages.push(data);
-  state.stageItems[data.id]=[];
-  state.activeStageId=data.id;
-  renderTreatment();updateStats();
-  showNotif('✓ Etapă nouă adăugată!');
+  state.stages.push(data);state.stageItems[data.id]=[];state.activeStageId=data.id;
+  renderTreatment();updateStats();showNotif('✓ Etapă nouă adăugată!');
 }
 
 function renderProcedures(){
   var filter=document.getElementById('cat-filter').value||'Toate';
   var list=filter==='Toate'?state.procedures:state.procedures.filter(function(p){return p.category===filter;});
   document.getElementById('proc-table').innerHTML=list.map(function(p){
-    return'<tr><td>'+esc(p.name)+'</td><td><span class="badge" style="background:#f1f5f9;color:#475569">'+esc(p.category||'—')+'</span></td><td style="text-align:right;font-weight:600;color:#0c3560">'+fmt(p.price||0)+'</td>'
+    return'<tr><td>'+esc(p.name)+'</td><td><span class="badge" style="background:#f1f5f9;color:#475569">'+esc(p.category||'—')+'</span></td>'
+      +'<td style="text-align:right;font-weight:600;color:#0c3560">'+fmt(p.price||0)+'</td>'
       +'<td><button class="btn btn-danger" style="padding:3px 8px;font-size:11px" onclick="deleteProc(\''+p.id+'\')">Șterge</button></td></tr>';
   }).join('');
 }
 
 async function addProcedure(){
   var name=document.getElementById('new-proc-name').value.trim();
-  if(!name){showNotif('Introduceți denumirea procedurii!',false);return;}
+  if(!name){showNotif('Introduceți denumirea!',false);return;}
   var obj={name,price:Number(document.getElementById('new-proc-price').value)||0,category:document.getElementById('new-proc-cat').value};
   var{data,error}=await sb.from('procedures').insert([obj]).select().single();
   if(error){showNotif('Eroare: '+error.message,false);return;}
-  state.procedures.push(data);
-  state.procedures.sort(function(a,b){return a.category.localeCompare(b.category)||a.name.localeCompare(b.name);});
-  document.getElementById('new-proc-name').value='';
-  document.getElementById('new-proc-price').value='';
-  renderProcedures();updateStats();
-  showNotif('✓ Procedură adăugată în catalog!');
+  state.procedures.push(data);state.procedures.sort(function(a,b){return a.category.localeCompare(b.category)||a.name.localeCompare(b.name);});
+  document.getElementById('new-proc-name').value='';document.getElementById('new-proc-price').value='';
+  renderProcedures();updateStats();showNotif('✓ Procedură adăugată!');
 }
 
 async function deleteProc(id){
   if(!confirm('Ștergi această procedură din catalog?'))return;
   await sb.from('procedures').delete().eq('id',id);
   state.procedures=state.procedures.filter(function(p){return p.id!==id;});
-  renderProcedures();updateStats();
-  showNotif('Procedură ștearsă din catalog.');
+  renderProcedures();updateStats();showNotif('Procedură ștearsă.');
 }
 
 function renderPdfPreview(){
@@ -711,49 +772,33 @@ function renderPdfPreview(){
   var addr=(document.getElementById('clinic-address')||{}).value||'';
   var doctor=(document.getElementById('clinic-doctor')||{}).value||'';
   var today=new Date().toLocaleDateString('ro-RO');
-
-  if(!patId||!state.stages.length){
-    document.getElementById('pdf-preview').innerHTML='<div class="loading">Selectează un pacient cu plan de tratament</div>';
-    return;
-  }
-
+  if(!patId||!state.stages.length){document.getElementById('pdf-preview').innerHTML='<div class="loading">Selectează un pacient cu plan de tratament</div>';return;}
   var html=state.stages.map(function(stage,idx){
     var items=state.stageItems[stage.id]||[];
     var isLast=idx===state.stages.length-1;
-    var rows=!items.length
-      ?'<tr><td colspan="2" style="color:#94a3b8;padding:8px;font-style:italic">Nicio procedură</td></tr>'
+    var rows=!items.length?'<tr><td colspan="2" style="color:#94a3b8;padding:8px;font-style:italic">Nicio procedură</td></tr>'
       :items.map(function(it){return'<tr><td>'+esc(it.name)+'</td><td style="text-align:right;font-weight:600;white-space:nowrap">'+fmt(it.price||0)+'</td></tr>';}).join('');
-
     return '<div class="pdf-page">'
-      +'<div class="pdf-header">'
-      +'<div class="pdf-logo-box">PARODONTAL</div>'
-      +'<div style="flex:1">'
-      +'<div class="pdf-clinic-name">'+esc(clinicName)+'</div>'
+      +'<div class="pdf-header"><div class="pdf-logo-box">PARODONTAL</div>'
+      +'<div style="flex:1"><div class="pdf-clinic-name">'+esc(clinicName)+'</div>'
       +'<div style="font-size:12px;color:#64748b;margin-top:2px">'+t.planTitle+'</div>'
-      +'<div style="font-size:11px;color:#94a3b8;margin-top:2px">'+esc(phone)+(addr?' · '+esc(addr):'')+'</div>'
-      +'</div>'
-      +'<div style="text-align:right;font-size:11px;color:#94a3b8">'+t.date+': '+today+'</div>'
-      +'</div>'
+      +'<div style="font-size:11px;color:#94a3b8;margin-top:2px">'+esc(phone)+(addr?' · '+esc(addr):'')+'</div></div>'
+      +'<div style="text-align:right;font-size:11px;color:#94a3b8">'+t.date+': '+today+'</div></div>'
       +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px;margin-bottom:14px;background:#f8fafc;padding:12px;border-radius:8px">'
       +'<div><strong>'+t.patient+':</strong> '+esc(pat?pat.name:'—')+'</div>'
       +'<div><strong>'+t.doctor+':</strong> '+esc(doctor||'Dr. ______________')+'</div>'
       +(pat&&pat.diagnosis?'<div style="grid-column:span 2"><strong>Diagnostic:</strong> '+esc(pat.diagnosis)+'</div>':'')
       +'</div>'
       +'<div style="font-weight:600;color:#0c3560;margin-bottom:8px;font-size:13px">'+esc(stage.name)+'</div>'
-      +'<table class="pdf-table"><thead><tr><th>'+t.procedure+'</th><th style="text-align:right">'+t.price+'</th></tr></thead>'
-      +'<tbody>'+rows+'</tbody></table>'
+      +'<table class="pdf-table"><thead><tr><th>'+t.procedure+'</th><th style="text-align:right">'+t.price+'</th></tr></thead><tbody>'+rows+'</tbody></table>'
       +'<div style="text-align:right;font-size:13px;font-weight:600;color:#0c3560;margin-top:10px;padding-top:8px;border-top:1px solid #e2e8f0">'+t.stageTotal+': '+fmt(stTotal(items))+'</div>'
-      +(isLast
-        ?'<div style="margin-top:14px;padding:12px;background:#f0fdf4;border-radius:8px;font-size:12px;border:1px solid #bbf7d0"><strong>'+t.recommendations+':</strong> '+recs[lang]+'</div>'
+      +(isLast?'<div style="margin-top:14px;padding:12px;background:#f0fdf4;border-radius:8px;font-size:12px;border:1px solid #bbf7d0"><strong>'+t.recommendations+':</strong> '+recs[lang]+'</div>'
         +'<div style="margin-top:14px;text-align:right;font-size:16px;font-weight:700;color:#0c3560;padding-top:12px;border-top:2px solid #0c3560">'+t.grandTotal+': '+fmt(grandTotal())+'</div>'
         +'<div style="margin-top:20px;display:grid;grid-template-columns:1fr 1fr;gap:20px;font-size:12px;color:#64748b">'
         +'<div style="border-top:1px solid #e2e8f0;padding-top:8px">Semnătura medicului</div>'
-        +'<div style="border-top:1px solid #e2e8f0;padding-top:8px">Semnătura pacientului</div>'
-        +'</div>'
-        :'')
+        +'<div style="border-top:1px solid #e2e8f0;padding-top:8px">Semnătura pacientului</div></div>':'')
       +'</div>';
   }).join('');
-
   document.getElementById('pdf-preview').innerHTML=html;
 }
 
@@ -762,10 +807,9 @@ function printPdf(){
   if(!prev||prev.querySelector('.loading')){showNotif('Selectează mai întâi un pacient cu plan!',false);return;}
   var pat=getPat(state.pdfPatientId||state.selectedPatientId);
   var w=window.open('','_blank');
-  w.document.write('<!DOCTYPE html><html><head><title>Plan Tratament - '+(pat?pat.name:'Pacient')+'</title><style>');
+  w.document.write('<!DOCTYPE html><html><head><title>Plan - '+(pat?pat.name:'Pacient')+'</title><style>');
   w.document.write('*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;font-size:12px;padding:20px;color:#1e293b}');
-  w.document.write('table{width:100%;border-collapse:collapse}th{background:#f1f5f9;padding:6px 8px;text-align:left;font-size:11px;font-weight:600}');
-  w.document.write('td{padding:6px 8px;border-top:1px solid #f1f5f9;vertical-align:top}');
+  w.document.write('table{width:100%;border-collapse:collapse}th{background:#f1f5f9;padding:6px 8px;text-align:left;font-size:11px;font-weight:600}td{padding:6px 8px;border-top:1px solid #f1f5f9;vertical-align:top}');
   w.document.write('.pdf-page{border:1px solid #e2e8f0;border-radius:8px;padding:20px;margin-bottom:20px;page-break-after:always}');
   w.document.write('.pdf-header{display:flex;align-items:center;gap:14px;padding-bottom:14px;border-bottom:1px solid #e2e8f0;margin-bottom:14px}');
   w.document.write('.pdf-logo-box{background:#0c3560;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:700;color:#fff;letter-spacing:1px;white-space:nowrap}');
@@ -774,8 +818,7 @@ function printPdf(){
   w.document.write('</style></head><body>');
   w.document.write(prev.innerHTML);
   w.document.write('</body></html>');
-  w.document.close();w.focus();
-  setTimeout(function(){w.print();},600);
+  w.document.close();w.focus();setTimeout(function(){w.print();},600);
 }
 
 function switchTab(tab){
