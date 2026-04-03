@@ -353,20 +353,17 @@ tr:last-child td{border-bottom:none}
 
           <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:14px">
             <div style="font-weight:600;font-size:13px;color:#0c3560;margin-bottom:10px;display:flex;align-items:center;gap:6px">
-              <svg width="16" height="16" fill="none" stroke="#0c3560" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
-              Traducere AI
+              <svg width="16" height="16" fill="none" stroke="#0c3560" stroke-width="2" viewBox="0 0 24 24"><path d="M5 8l6 6M4 14l6-6 2-2M2 5h12M7 2h1M22 22l-5-10-5 10M14 18h6"/></svg>
+              Limba documentului
             </div>
-            <label style="margin-top:0">Traduce planul în limba</label>
-            <select id="ai-lang">
-              <option value="ru">Rusă</option>
-              <option value="en">Engleză</option>
-              <option value="it">Italiană</option>
+            <label style="margin-top:0">Selectează limba planului</label>
+            <select id="pdf-lang" onchange="renderPdfPreview()">
+              <option value="ro">Română</option>
+              <option value="ru">Rusă (Русский)</option>
+              <option value="en">Engleză (English)</option>
+              <option value="it">Italiană (Italiano)</option>
             </select>
-            <button class="btn btn-primary btn-full" onclick="translatePlan()" id="btn-translate" style="margin-top:10px;background:#1d4ed8;border-color:#1d4ed8">
-              <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 8l6 6M4 14l6-6 2-2M2 5h12M7 2h1M22 22l-5-10-5 10M14 18h6"/></svg>
-              <span id="btn-translate-text">Traduce cu AI</span>
-            </button>
-            <div id="ai-status-msg" style="font-size:12px;color:#64748b;margin-top:8px;text-align:center;min-height:16px"></div>
+            <div style="font-size:12px;color:#64748b;margin-top:8px">Toate procedurile vor fi afișate în limba selectată.</div>
           </div>
 
           <hr style="border:none;border-top:1px solid #e2e8f0;margin:16px 0">
@@ -435,6 +432,285 @@ const SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSI
 const{createClient}=supabase;
 const sb=createClient(SUPABASE_URL,SUPABASE_KEY);
 
+var TRANSLATIONS = {
+  ro: {
+    // Diagnostic
+    'Consultatie': 'Consultatie',
+    'Radiografie Panoramica': 'Radiografie Panoramica',
+    'Tomografie Dentara': 'Tomografie Dentara',
+    // Terapie
+    'Obturatia 1 suprafata': 'Obturatia 1 suprafata',
+    'Obturatia 2 suprafete': 'Obturatia 2 suprafete',
+    'Obturatia 3 suprafete': 'Obturatia 3 suprafete',
+    'Refacerea dintelui cu distructie coronara totala (cu pivot)': 'Refacerea dintelui cu distructie coronara totala (cu pivot)',
+    'Restaurare estetica': 'Restaurare estetica',
+    'Trepanarea camerei pulpare, aplicarea pastei arsenicale si obturatie provizorie': 'Trepanarea camerei pulpare, aplicarea pastei arsenicale si obturatie provizorie',
+    'Tratamentul endodontic primar a dintelui monoradicular': 'Tratamentul endodontic primar a dintelui monoradicular',
+    'Tratamentul endodontic primar a dintelui cu 2 radacini': 'Tratamentul endodontic primar a dintelui cu 2 radacini',
+    'Tratamentul endodontic primar a dintelui cu 3 radacini': 'Tratamentul endodontic primar a dintelui cu 3 radacini',
+    'Tratamentul endodontic primar a dintelui cu 4 radacini': 'Tratamentul endodontic primar a dintelui cu 4 radacini',
+    'Retratamentul endodontic a dintelui monoradicular': 'Retratamentul endodontic a dintelui monoradicular',
+    'Retratamentul endodontic a dintelui cu 2 radacini': 'Retratamentul endodontic a dintelui cu 2 radacini',
+    'Retratamentul endodontic a dintelui cu 3 radacini': 'Retratamentul endodontic a dintelui cu 3 radacini',
+    'Retratamentul endodontic a dintelui cu 4 radacini': 'Retratamentul endodontic a dintelui cu 4 radacini',
+    'Igienizare profesionala': 'Igienizare profesionala',
+    'Albire Dentara': 'Albire Dentara',
+    // Ortopedie
+    'Coroana din oxid de zirconiu pe implant': 'Coroana din oxid de zirconiu pe implant',
+    'Coroana din Metalo/Ceramica pe implant': 'Coroana din Metalo/Ceramica pe implant',
+    'Coroana provizorie pe implant': 'Coroana provizorie pe implant',
+    'Coroana din oxid de zirconiu pe dinte': 'Coroana din oxid de zirconiu pe dinte',
+    'Coroana din Metalo/Ceramica pe dinte': 'Coroana din Metalo/Ceramica pe dinte',
+    'Coroana provizorie pe dinte': 'Coroana provizorie pe dinte',
+    'Coroana E-max pe dinte': 'Coroana E-max pe dinte',
+    'Incrustatie din ceramica (Inlay, Onlay, Overlay)': 'Incrustatie din ceramica (Inlay, Onlay, Overlay)',
+    'Fatete dentare': 'Fatete dentare',
+    'Dispozitiv Corono-Radicular': 'Dispozitiv Corono-Radicular',
+    'Bont protetic individualizat din oxid de zirconiu': 'Bont protetic individualizat din oxid de zirconiu',
+    'Proteza mobilizabila totala/partiala din acrilat': 'Proteza mobilizabila totala/partiala din acrilat',
+    'Proteza mobilizabila partiala din biodentaplast': 'Proteza mobilizabila partiala din biodentaplast',
+    'Proteza fixa din Metalo/Ceramica pe 4/6 implante': 'Proteza fixa din Metalo/Ceramica pe 4/6 implante',
+    'Proteza fixa din oxid de zirconiu cu bara de titan pe 4/6 implante': 'Proteza fixa din oxid de zirconiu cu bara de titan pe 4/6 implante',
+    'Proteza fixa din acrilat cu bara de titan pe 4/6 implante': 'Proteza fixa din acrilat cu bara de titan pe 4/6 implante',
+    // Chirurgie
+    'Extractie dentara tipica': 'Extractie dentara tipica',
+    'Extractie dentara atipica': 'Extractie dentara atipica',
+    'Frenectomie': 'Frenectomie',
+    'Decapisonare': 'Decapisonare',
+    'Suturarea plagii': 'Suturarea plagii',
+    'Augmentarea alveolei dupa extractie': 'Augmentarea alveolei dupa extractie',
+    'Deschiderea implantului si inserarea conformatorului gingival': 'Deschiderea implantului si inserarea conformatorului gingival',
+    'Sinus lifting trans-crestal': 'Sinus lifting trans-crestal',
+    'Sinus lifting lateral': 'Sinus lifting lateral',
+    'Implant dentar MegaGen Anyridge': 'Implant dentar MegaGen Anyridge',
+    'Implant dentar Dentium Superline': 'Implant dentar Dentium Superline',
+    'Implant dentar S.I.N': 'Implant dentar S.I.N',
+    // Ortodontie
+    'Consultatie ortodontica': 'Consultatie ortodontica',
+    'Sisteme clasice cu bracketi': 'Sisteme clasice cu bracketi',
+    'Sisteme rapide cu bracketi autoligatorabile': 'Sisteme rapide cu bracketi autoligatorabile',
+    'Alignere': 'Alignere',
+    'Activare bracketi': 'Activare bracketi',
+    'Retainer': 'Retainer',
+    'Cape de contentie': 'Cape de contentie',
+    // Pedodontie
+    'Igienizare (Pedodontie)': 'Igienizare (Pedodontie)',
+    'Sigilarea fisurilor': 'Sigilarea fisurilor',
+    'Tratarea cariilor dintilor temporari': 'Tratarea cariilor dintilor temporari',
+    'Tratamentul periodontitei': 'Tratamentul periodontitei',
+    'Tratamentul pulpitei': 'Tratamentul pulpitei',
+    'Extractia dintilor temporari cu anestezie': 'Extractia dintilor temporari cu anestezie',
+    // Parodontologie
+    'Efectuare parodontograma': 'Efectuare parodontograma',
+    'Debridare si decontaminare cu Vector Paro Pro': 'Debridare si decontaminare cu Vector Paro Pro',
+    'Chiuretaj pe camp inchis in zona a 4/7 dinti': 'Chiuretaj pe camp inchis in zona a 4/7 dinti',
+    'Chiuretaj pe camp deschis in zona a 4/7 dinti': 'Chiuretaj pe camp deschis in zona a 4/7 dinti',
+    'Plasmodent': 'Plasmodent'
+  },
+  ru: {
+    'Consultatie': 'Консультация',
+    'Radiografie Panoramica': 'Панорамный рентген',
+    'Tomografie Dentara': 'Дентальная томография',
+    'Obturatia 1 suprafata': 'Пломба 1 поверхность',
+    'Obturatia 2 suprafete': 'Пломба 2 поверхности',
+    'Obturatia 3 suprafete': 'Пломба 3 поверхности',
+    'Refacerea dintelui cu distructie coronara totala (cu pivot)': 'Восстановление зуба при полном разрушении коронки (со штифтом)',
+    'Restaurare estetica': 'Эстетическая реставрация',
+    'Trepanarea camerei pulpare, aplicarea pastei arsenicale si obturatie provizorie': 'Трепанация пульповой камеры, наложение мышьяковистой пасты и временная пломба',
+    'Tratamentul endodontic primar a dintelui monoradicular': 'Первичное эндодонтическое лечение однокорневого зуба',
+    'Tratamentul endodontic primar a dintelui cu 2 radacini': 'Первичное эндодонтическое лечение зуба с 2 корнями',
+    'Tratamentul endodontic primar a dintelui cu 3 radacini': 'Первичное эндодонтическое лечение зуба с 3 корнями',
+    'Tratamentul endodontic primar a dintelui cu 4 radacini': 'Первичное эндодонтическое лечение зуба с 4 корнями',
+    'Retratamentul endodontic a dintelui monoradicular': 'Повторное эндодонтическое лечение однокорневого зуба',
+    'Retratamentul endodontic a dintelui cu 2 radacini': 'Повторное эндодонтическое лечение зуба с 2 корнями',
+    'Retratamentul endodontic a dintelui cu 3 radacini': 'Повторное эндодонтическое лечение зуба с 3 корнями',
+    'Retratamentul endodontic a dintelui cu 4 radacini': 'Повторное эндодонтическое лечение зуба с 4 корнями',
+    'Igienizare profesionala': 'Профессиональная гигиена',
+    'Albire Dentara': 'Отбеливание зубов',
+    'Coroana din oxid de zirconiu pe implant': 'Коронка из диоксида циркония на имплант',
+    'Coroana din Metalo/Ceramica pe implant': 'Металлокерамическая коронка на имплант',
+    'Coroana provizorie pe implant': 'Временная коронка на имплант',
+    'Coroana din oxid de zirconiu pe dinte': 'Коронка из диоксида циркония на зуб',
+    'Coroana din Metalo/Ceramica pe dinte': 'Металлокерамическая коронка на зуб',
+    'Coroana provizorie pe dinte': 'Временная коронка на зуб',
+    'Coroana E-max pe dinte': 'Коронка E-max на зуб',
+    'Incrustatie din ceramica (Inlay, Onlay, Overlay)': 'Керамическая вкладка (Inlay, Onlay, Overlay)',
+    'Fatete dentare': 'Зубные виниры',
+    'Dispozitiv Corono-Radicular': 'Коронорадикулярное устройство',
+    'Bont protetic individualizat din oxid de zirconiu': 'Индивидуальный абатмент из диоксида циркония',
+    'Proteza mobilizabila totala/partiala din acrilat': 'Полный/частичный съёмный протез из акрилата',
+    'Proteza mobilizabila partiala din biodentaplast': 'Частичный съёмный протез из биодентапласта',
+    'Proteza fixa din Metalo/Ceramica pe 4/6 implante': 'Несъёмный протез металлокерамика на 4/6 имплантах',
+    'Proteza fixa din oxid de zirconiu cu bara de titan pe 4/6 implante': 'Несъёмный протез из циркония с титановым каркасом на 4/6 имплантах',
+    'Proteza fixa din acrilat cu bara de titan pe 4/6 implante': 'Несъёмный протез из акрилата с титановым каркасом на 4/6 имплантах',
+    'Extractie dentara tipica': 'Типичное удаление зуба',
+    'Extractie dentara atipica': 'Атипичное удаление зуба',
+    'Frenectomie': 'Френэктомия',
+    'Decapisonare': 'Декапюшонирование',
+    'Suturarea plagii': 'Ушивание раны',
+    'Augmentarea alveolei dupa extractie': 'Аугментация альвеолы после удаления',
+    'Deschiderea implantului si inserarea conformatorului gingival': 'Раскрытие импланта и установка формирователя десны',
+    'Sinus lifting trans-crestal': 'Синус-лифтинг транскрестальный',
+    'Sinus lifting lateral': 'Синус-лифтинг латеральный',
+    'Implant dentar MegaGen Anyridge': 'Дентальный имплант MegaGen Anyridge',
+    'Implant dentar Dentium Superline': 'Дентальный имплант Dentium Superline',
+    'Implant dentar S.I.N': 'Дентальный имплант S.I.N',
+    'Consultatie ortodontica': 'Ортодонтическая консультация',
+    'Sisteme clasice cu bracketi': 'Классические брекет-системы',
+    'Sisteme rapide cu bracketi autoligatorabile': 'Самолигирующиеся брекет-системы',
+    'Alignere': 'Элайнеры',
+    'Activare bracketi': 'Активация брекетов',
+    'Retainer': 'Ретейнер',
+    'Cape de contentie': 'Капы для ретенции',
+    'Igienizare (Pedodontie)': 'Гигиена (Детская стоматология)',
+    'Sigilarea fisurilor': 'Герметизация фиссур',
+    'Tratarea cariilor dintilor temporari': 'Лечение кариеса временных зубов',
+    'Tratamentul periodontitei': 'Лечение периодонтита',
+    'Tratamentul pulpitei': 'Лечение пульпита',
+    'Extractia dintilor temporari cu anestezie': 'Удаление временных зубов с анестезией',
+    'Efectuare parodontograma': 'Составление пародонтограммы',
+    'Debridare si decontaminare cu Vector Paro Pro': 'Дебридмент и деконтаминация аппаратом Vector Paro Pro',
+    'Chiuretaj pe camp inchis in zona a 4/7 dinti': 'Закрытый кюретаж в области 4/7 зубов',
+    'Chiuretaj pe camp deschis in zona a 4/7 dinti': 'Открытый кюретаж в области 4/7 зубов',
+    'Plasmodent': 'Плазмодент'
+  },
+  en: {
+    'Consultatie': 'Consultation',
+    'Radiografie Panoramica': 'Panoramic X-Ray',
+    'Tomografie Dentara': 'Dental CT Scan',
+    'Obturatia 1 suprafata': 'Composite Filling 1 Surface',
+    'Obturatia 2 suprafete': 'Composite Filling 2 Surfaces',
+    'Obturatia 3 suprafete': 'Composite Filling 3 Surfaces',
+    'Refacerea dintelui cu distructie coronara totala (cu pivot)': 'Full Crown Reconstruction with Post',
+    'Restaurare estetica': 'Aesthetic Restoration',
+    'Trepanarea camerei pulpare, aplicarea pastei arsenicale si obturatie provizorie': 'Pulp Chamber Opening, Arsenic Paste Placement and Temporary Filling',
+    'Tratamentul endodontic primar a dintelui monoradicular': 'Primary Root Canal Treatment - Single Root',
+    'Tratamentul endodontic primar a dintelui cu 2 radacini': 'Primary Root Canal Treatment - 2 Roots',
+    'Tratamentul endodontic primar a dintelui cu 3 radacini': 'Primary Root Canal Treatment - 3 Roots',
+    'Tratamentul endodontic primar a dintelui cu 4 radacini': 'Primary Root Canal Treatment - 4 Roots',
+    'Retratamentul endodontic a dintelui monoradicular': 'Root Canal Retreatment - Single Root',
+    'Retratamentul endodontic a dintelui cu 2 radacini': 'Root Canal Retreatment - 2 Roots',
+    'Retratamentul endodontic a dintelui cu 3 radacini': 'Root Canal Retreatment - 3 Roots',
+    'Retratamentul endodontic a dintelui cu 4 radacini': 'Root Canal Retreatment - 4 Roots',
+    'Igienizare profesionala': 'Professional Teeth Cleaning',
+    'Albire Dentara': 'Teeth Whitening',
+    'Coroana din oxid de zirconiu pe implant': 'Zirconia Crown on Implant',
+    'Coroana din Metalo/Ceramica pe implant': 'Metal-Ceramic Crown on Implant',
+    'Coroana provizorie pe implant': 'Temporary Crown on Implant',
+    'Coroana din oxid de zirconiu pe dinte': 'Zirconia Crown on Tooth',
+    'Coroana din Metalo/Ceramica pe dinte': 'Metal-Ceramic Crown on Tooth',
+    'Coroana provizorie pe dinte': 'Temporary Crown on Tooth',
+    'Coroana E-max pe dinte': 'E-max Crown on Tooth',
+    'Incrustatie din ceramica (Inlay, Onlay, Overlay)': 'Ceramic Inlay/Onlay/Overlay',
+    'Fatete dentare': 'Dental Veneers',
+    'Dispozitiv Corono-Radicular': 'Corono-Radicular Device',
+    'Bont protetic individualizat din oxid de zirconiu': 'Custom Zirconia Abutment',
+    'Proteza mobilizabila totala/partiala din acrilat': 'Full/Partial Removable Acrylic Denture',
+    'Proteza mobilizabila partiala din biodentaplast': 'Partial Removable Biodentaplast Denture',
+    'Proteza fixa din Metalo/Ceramica pe 4/6 implante': 'Fixed Metal-Ceramic Prosthesis on 4/6 Implants',
+    'Proteza fixa din oxid de zirconiu cu bara de titan pe 4/6 implante': 'Fixed Zirconia Prosthesis with Titanium Bar on 4/6 Implants',
+    'Proteza fixa din acrilat cu bara de titan pe 4/6 implante': 'Fixed Acrylic Prosthesis with Titanium Bar on 4/6 Implants',
+    'Extractie dentara tipica': 'Simple Tooth Extraction',
+    'Extractie dentara atipica': 'Surgical Tooth Extraction',
+    'Frenectomie': 'Frenectomy',
+    'Decapisonare': 'Operculectomy',
+    'Suturarea plagii': 'Wound Suturing',
+    'Augmentarea alveolei dupa extractie': 'Socket Preservation after Extraction',
+    'Deschiderea implantului si inserarea conformatorului gingival': 'Implant Uncovering and Healing Abutment Placement',
+    'Sinus lifting trans-crestal': 'Transcrestal Sinus Lift',
+    'Sinus lifting lateral': 'Lateral Sinus Lift',
+    'Implant dentar MegaGen Anyridge': 'Dental Implant MegaGen Anyridge',
+    'Implant dentar Dentium Superline': 'Dental Implant Dentium Superline',
+    'Implant dentar S.I.N': 'Dental Implant S.I.N',
+    'Consultatie ortodontica': 'Orthodontic Consultation',
+    'Sisteme clasice cu bracketi': 'Traditional Braces',
+    'Sisteme rapide cu bracketi autoligatorabile': 'Self-Ligating Braces',
+    'Alignere': 'Clear Aligners',
+    'Activare bracketi': 'Braces Adjustment',
+    'Retainer': 'Retainer',
+    'Cape de contentie': 'Retention Trays',
+    'Igienizare (Pedodontie)': 'Cleaning (Pediatric Dentistry)',
+    'Sigilarea fisurilor': 'Fissure Sealants',
+    'Tratarea cariilor dintilor temporari': 'Treatment of Cavities in Primary Teeth',
+    'Tratamentul periodontitei': 'Periodontitis Treatment',
+    'Tratamentul pulpitei': 'Pulpitis Treatment',
+    'Extractia dintilor temporari cu anestezie': 'Extraction of Primary Teeth with Anaesthesia',
+    'Efectuare parodontograma': 'Periodontal Chart',
+    'Debridare si decontaminare cu Vector Paro Pro': 'Debridement and Decontamination with Vector Paro Pro',
+    'Chiuretaj pe camp inchis in zona a 4/7 dinti': 'Closed Curettage in the Area of 4/7 Teeth',
+    'Chiuretaj pe camp deschis in zona a 4/7 dinti': 'Open Curettage in the Area of 4/7 Teeth',
+    'Plasmodent': 'Plasmodent'
+  },
+  it: {
+    'Consultatie': 'Consultazione',
+    'Radiografie Panoramica': 'Radiografia Panoramica',
+    'Tomografie Dentara': 'Tomografia Dentale',
+    'Obturatia 1 suprafata': 'Otturazione 1 superficie',
+    'Obturatia 2 suprafete': 'Otturazione 2 superfici',
+    'Obturatia 3 suprafete': 'Otturazione 3 superfici',
+    'Refacerea dintelui cu distructie coronara totala (cu pivot)': 'Ricostruzione del dente con distruzione coronale totale (con perno)',
+    'Restaurare estetica': 'Restauro estetico',
+    'Trepanarea camerei pulpare, aplicarea pastei arsenicale si obturatie provizorie': 'Apertura della camera pulpare, applicazione della pasta arsenicale e otturazione provvisoria',
+    'Tratamentul endodontic primar a dintelui monoradicular': 'Trattamento endodontico primario del dente monoradicolare',
+    'Tratamentul endodontic primar a dintelui cu 2 radacini': 'Trattamento endodontico primario del dente con 2 radici',
+    'Tratamentul endodontic primar a dintelui cu 3 radacini': 'Trattamento endodontico primario del dente con 3 radici',
+    'Tratamentul endodontic primar a dintelui cu 4 radacini': 'Trattamento endodontico primario del dente con 4 radici',
+    'Retratamentul endodontic a dintelui monoradicular': 'Ritrattamento endodontico del dente monoradicolare',
+    'Retratamentul endodontic a dintelui cu 2 radacini': 'Ritrattamento endodontico del dente con 2 radici',
+    'Retratamentul endodontic a dintelui cu 3 radacini': 'Ritrattamento endodontico del dente con 3 radici',
+    'Retratamentul endodontic a dintelui cu 4 radacini': 'Ritrattamento endodontico del dente con 4 radici',
+    'Igienizare profesionala': 'Igiene professionale',
+    'Albire Dentara': 'Sbiancamento dentale',
+    'Coroana din oxid de zirconiu pe implant': 'Corona in zirconia su impianto',
+    'Coroana din Metalo/Ceramica pe implant': 'Corona metallo-ceramica su impianto',
+    'Coroana provizorie pe implant': 'Corona provvisoria su impianto',
+    'Coroana din oxid de zirconiu pe dinte': 'Corona in zirconia su dente',
+    'Coroana din Metalo/Ceramica pe dinte': 'Corona metallo-ceramica su dente',
+    'Coroana provizorie pe dinte': 'Corona provvisoria su dente',
+    'Coroana E-max pe dinte': 'Corona E-max su dente',
+    'Incrustatie din ceramica (Inlay, Onlay, Overlay)': 'Intarsio in ceramica (Inlay, Onlay, Overlay)',
+    'Fatete dentare': 'Faccette dentali',
+    'Dispozitiv Corono-Radicular': 'Dispositivo corono-radicolare',
+    'Bont protetic individualizat din oxid de zirconiu': 'Moncone protesico individualizzato in zirconia',
+    'Proteza mobilizabila totala/partiala din acrilat': 'Protesi rimovibile totale/parziale in acrilato',
+    'Proteza mobilizabila partiala din biodentaplast': 'Protesi rimovibile parziale in biodentaplast',
+    'Proteza fixa din Metalo/Ceramica pe 4/6 implante': 'Protesi fissa metallo-ceramica su 4/6 impianti',
+    'Proteza fixa din oxid de zirconiu cu bara de titan pe 4/6 implante': 'Protesi fissa in zirconia con barra in titanio su 4/6 impianti',
+    'Proteza fixa din acrilat cu bara de titan pe 4/6 implante': 'Protesi fissa in acrilato con barra in titanio su 4/6 impianti',
+    'Extractie dentara tipica': 'Estrazione dentale semplice',
+    'Extractie dentara atipica': 'Estrazione dentale chirurgica',
+    'Frenectomie': 'Frenectomia',
+    'Decapisonare': 'Opercolectomia',
+    'Suturarea plagii': 'Sutura della ferita',
+    'Augmentarea alveolei dupa extractie': 'Preservazione alveolare post-estrazione',
+    'Deschiderea implantului si inserarea conformatorului gingival': 'Riapertura impianto e inserimento del guaritore gengivale',
+    'Sinus lifting trans-crestal': 'Rialzo del seno mascellare transcrestale',
+    'Sinus lifting lateral': 'Rialzo del seno mascellare laterale',
+    'Implant dentar MegaGen Anyridge': 'Impianto dentale MegaGen Anyridge',
+    'Implant dentar Dentium Superline': 'Impianto dentale Dentium Superline',
+    'Implant dentar S.I.N': 'Impianto dentale S.I.N',
+    'Consultatie ortodontica': 'Consultazione ortodontica',
+    'Sisteme clasice cu bracketi': 'Apparecchio fisso classico',
+    'Sisteme rapide cu bracketi autoligatorabile': 'Apparecchio autolegante',
+    'Alignere': 'Allineatori trasparenti',
+    'Activare bracketi': 'Attivazione apparecchio',
+    'Retainer': 'Retainer',
+    'Cape de contentie': 'Mascherine di contenzione',
+    'Igienizare (Pedodontie)': 'Igiene (Odontoiatria pediatrica)',
+    'Sigilarea fisurilor': 'Sigillatura delle fessure',
+    'Tratarea cariilor dintilor temporari': 'Trattamento delle carie dei denti decidui',
+    'Tratamentul periodontitei': 'Trattamento della periodontite',
+    'Tratamentul pulpitei': 'Trattamento della pulpite',
+    'Extractia dintilor temporari cu anestezie': 'Estrazione dei denti decidui in anestesia',
+    'Efectuare parodontograma': 'Compilazione del parodontogramma',
+    'Debridare si decontaminare cu Vector Paro Pro': 'Debridement e decontaminazione con Vector Paro Pro',
+    'Chiuretaj pe camp inchis in zona a 4/7 dinti': 'Curettage chiuso nell\'area di 4/7 denti',
+    'Chiuretaj pe camp deschis in zona a 4/7 dinti': 'Curettage aperto nell\'area di 4/7 denti',
+    'Plasmodent': 'Plasmodent'
+  }
+};
+
+
 var state={currentUser:null,patients:[],procedures:[],stages:[],stageItems:{},doneItems:{},translations:{},selectedPatientId:null,activeStageId:null,pdfPatientId:null};
 var cart=[];
 var selectedTeeth=[];
@@ -451,10 +727,10 @@ var TEETH_GROUPS=[
 ];
 
 var labels={
-  ro:{patient:'Pacient',doctor:'Medic curant',stage:'Etapă',procedure:'Procedură',price:'Preț',stageTotal:'Total etapă',grandTotal:'Total general',planTitle:'Plan de tratament stomatologic',recommendations:'Recomandări',date:'Data',tooth:'Dinte'},
-  ru:{patient:'Пациент',doctor:'Лечащий врач',stage:'Этап',procedure:'Процедура',price:'Цена',stageTotal:'Итого этап',grandTotal:'Общая сумма',planTitle:'План стоматологического лечения',recommendations:'Рекомендации',date:'Дата',tooth:'Зуб'},
-  en:{patient:'Patient',doctor:'Attending Physician',stage:'Stage',procedure:'Procedure',price:'Price',stageTotal:'Stage Total',grandTotal:'Grand Total',planTitle:'Dental Treatment Plan',recommendations:'Recommendations',date:'Date',tooth:'Tooth'},
-  it:{patient:'Paziente',doctor:'Medico curante',stage:'Fase',procedure:'Procedura',price:'Prezzo',stageTotal:'Totale fase',grandTotal:'Totale generale',planTitle:'Piano di trattamento dentale',recommendations:'Raccomandazioni',date:'Data',tooth:'Dente'}
+  ro:{patient:'Pacient',doctor:'Medic curant',stage:'Etapă',procedure:'Procedură',price:'Preț',stageTotal:'Total etapă',grandTotal:'Total general',planTitle:'Plan de tratament stomatologic',recommendations:'Recomandări',date:'Data',tooth:'Dinte',rec:'Igienă orală atentă, controale periodice și respectarea etapelor de tratament.'},
+  ru:{patient:'Пациент',doctor:'Лечащий врач',stage:'Этап',procedure:'Процедура',price:'Цена',stageTotal:'Итого этап',grandTotal:'Общая сумма',planTitle:'План стоматологического лечения',recommendations:'Рекомендации',date:'Дата',tooth:'Зуб',rec:'Тщательная гигиена полости рта, регулярные осмотры и соблюдение этапов лечения.'},
+  en:{patient:'Patient',doctor:'Attending Physician',stage:'Stage',procedure:'Procedure',price:'Price',stageTotal:'Stage Total',grandTotal:'Grand Total',planTitle:'Dental Treatment Plan',recommendations:'Recommendations',date:'Date',tooth:'Tooth',rec:'Careful oral hygiene, periodic checkups and adherence to treatment stages.'},
+  it:{patient:'Paziente',doctor:'Medico curante',stage:'Fase',procedure:'Procedura',price:'Prezzo',stageTotal:'Totale fase',grandTotal:'Totale generale',planTitle:'Piano di trattamento dentale',recommendations:'Raccomandazioni',date:'Data',tooth:'Dente',rec:'Igiene orale accurata, controlli periodici e rispetto delle fasi del trattamento.'}
 };
 var recs={
   ro:'Igienă orală atentă, controale periodice și respectarea etapelor de tratament.',
@@ -836,82 +1112,27 @@ async function deleteProc(id){
 }
 
 function renderPdfPreview(){
-  var lang=document.getElementById('ai-lang')?document.getElementById('ai-lang').value:'ro';
-  renderPdfPreviewWithLang(lang==='ro'?'ro':lang);
+  var lang=document.getElementById('pdf-lang')?document.getElementById('pdf-lang').value:'ro';
+  renderPdfPreviewWithLang(lang);
 }
 
-async function translatePlan(){
-  var patId=state.pdfPatientId||state.selectedPatientId;
-  if(!patId||!state.stages.length){showNotif('Selectează un pacient cu plan de tratament!',false);return;}
-  var lang=document.getElementById('ai-lang').value;
-  var langNames={ru:'rusă',en:'engleză',it:'italiană'};
-  var btn=document.getElementById('btn-translate');
-  var btnText=document.getElementById('btn-translate-text');
-  var statusMsg=document.getElementById('ai-status-msg');
-  btn.disabled=true;
-  btnText.textContent='Se traduce...';
-  statusMsg.textContent='AI procesează planul de tratament...';
-
-  var allItems=[];
-  state.stages.forEach(function(s){
-    (state.stageItems[s.id]||[]).forEach(function(it){
-      allItems.push(it.name);
-    });
-  });
-  var uniqueItems=Array.from(new Set(allItems));
-
-  var langLabels={
-    ru:{planTitle:'План стоматологического лечения',patient:'Пациент',doctor:'Лечащий врач',stage:'Этап',procedure:'Процедура',price:'Цена',stageTotal:'Итого этап',grandTotal:'Общая сумма',recommendations:'Рекомендации',date:'Дата',rec:'Тщательная гигиена полости рта, регулярные осмотры и соблюдение этапов лечения.'},
-    en:{planTitle:'Dental Treatment Plan',patient:'Patient',doctor:'Attending Physician',stage:'Stage',procedure:'Procedure',price:'Price',stageTotal:'Stage Total',grandTotal:'Grand Total',recommendations:'Recommendations',date:'Date',rec:'Careful oral hygiene, periodic checkups and adherence to treatment stages.'},
-    it:{planTitle:'Piano di trattamento dentale',patient:'Paziente',doctor:'Medico curante',stage:'Fase',procedure:'Procedura',price:'Prezzo',stageTotal:'Totale fase',grandTotal:'Totale generale',recommendations:'Raccomandazioni',date:'Data',rec:'Igiene orale accurata, controlli periodici e rispetto delle fasi del trattamento.'}
-  };
-
-  try {
-    var prompt='Ești un translator medical stomatologic. Traduce următoarele denumiri de proceduri stomatologice din română în '+langNames[lang]+'. Răspunde DOAR cu un obiect JSON valid, fără text suplimentar, fără markdown. Formatul: {"procedura originala":"traducere",...}\n\nProceduri:\n'+uniqueItems.map(function(i){return '"'+i+'"';}).join('\n');
-
-    var response=await fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({
-        model:'claude-sonnet-4-20250514',
-        max_tokens:1000,
-        messages:[{role:'user',content:prompt}]
-      })
-    });
-    var data=await response.json();
-    var text=data.content.map(function(c){return c.text||'';}).join('');
-    var clean=text.replace(/```json|```/g,'').trim();
-    var translated=JSON.parse(clean);
-    state.translations[lang]=translated;
-    statusMsg.textContent='✓ Tradus în '+langNames[lang]+'! Preview actualizat.';
-    statusMsg.style.color='#16a34a';
-    renderPdfPreviewWithLang(lang);
-    showNotif('✓ Plan tradus în '+langNames[lang]+'!');
-  } catch(e){
-    statusMsg.textContent='Eroare la traducere. Încearcă din nou.';
-    statusMsg.style.color='#ef4444';
-    showNotif('Eroare la traducere!',false);
-  }
-  btn.disabled=false;
-  btnText.textContent='Traduce cu AI';
-}
-
-function getTranslatedName(name,lang){
-  if(!lang||lang==='ro')return name;
-  var t=state.translations[lang];
-  if(!t)return name;
-  return t[name]||name;
+function getTranslatedName(name, lang){
+  if(!lang || lang==='ro') return name;
+  var dict = TRANSLATIONS[lang];
+  if(!dict) return name;
+  // Try exact match first
+  if(dict[name]) return dict[name];
+  // Try matching base name without tooth suffix e.g. "Consultatie (d.12)"
+  var base = name.replace(/\s*\(d\.\d+\)$/, '');
+  var suffix = name.match(/\s*\(d\.\d+\)$/);
+  if(dict[base]) return dict[base] + (suffix ? suffix[0] : '');
+  return name;
 }
 
 function renderPdfPreviewWithLang(lang){
   var patId=state.pdfPatientId||state.selectedPatientId;
   var pat=getPat(patId);
-  var langLabels={
-    ru:{planTitle:'План стоматологического лечения',patient:'Пациент',doctor:'Лечащий врач',stage:'Этап',procedure:'Процедура',price:'Цена',stageTotal:'Итого этап',grandTotal:'Общая сумма',recommendations:'Рекомендации',date:'Дата',rec:'Тщательная гигиена полости рта, регулярные осмотры и соблюдение этапов лечения.'},
-    en:{planTitle:'Dental Treatment Plan',patient:'Patient',doctor:'Attending Physician',stage:'Stage',procedure:'Procedure',price:'Price',stageTotal:'Stage Total',grandTotal:'Grand Total',recommendations:'Recommendations',date:'Date',rec:'Careful oral hygiene, periodic checkups and adherence to treatment stages.'},
-    it:{planTitle:'Piano di trattamento dentale',patient:'Paziente',doctor:'Medico curante',stage:'Fase',procedure:'Procedura',price:'Prezzo',stageTotal:'Totale fase',grandTotal:'Totale generale',recommendations:'Raccomandazioni',date:'Data',rec:'Igiene orale accurata, controlli periodici e rispetto delle fasi del trattamento.'}
-  };
-  var t=langLabels[lang]||{planTitle:'Plan de tratament stomatologic',patient:'Pacient',doctor:'Medic curant',stage:'Etapă',procedure:'Procedură',price:'Preț',stageTotal:'Total etapă',grandTotal:'Total general',recommendations:'Recomandări',date:'Data',rec:'Igienă orală atentă, controale periodice și respectarea etapelor de tratament.'};
+  var t=labels[lang]||labels['ro'];
   var clinicName=(document.getElementById('clinic-name')||{}).value||'Parodontal Clinic';
   var phone=(document.getElementById('clinic-phone')||{}).value||'';
   var addr=(document.getElementById('clinic-address')||{}).value||'';
