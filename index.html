@@ -157,7 +157,7 @@ tr:last-child td{border-bottom:none}
 <div class="app hidden" id="app-screen">
   <aside class="sidebar">
     <div class="sidebar-logo">
-      <img src="" id="sb-logo" style="height:108px;object-fit:contain;background:#fff;border-radius:8px;padding:6px;width:270px">
+      <img src="" id="sb-logo" style="height:72px;object-fit:contain;background:#fff;border-radius:8px;padding:6px;width:180px">
       <div class="clinic-sub">Planuri de tratament</div>
     </div>
     <button class="sidebar-btn active" id="sbtn-patients" onclick="switchTab('patients')">
@@ -1160,7 +1160,7 @@ function renderPdfPreviewWithLang(lang){
         return'<tr><td style="width:28px;text-align:center"><div style="width:16px;height:16px;border:1.5px solid #94a3b8;border-radius:3px;display:inline-block"></div></td><td>'+esc(translatedName)+'</td><td style="text-align:right;font-weight:600;white-space:nowrap">'+fmt(it.price||0)+'</td></tr>';
       }).join('');
     return'<div class="pdf-page">'
-      +'<div class="pdf-header"><img src="'+LOGO_B64+'" style="height:96px;object-fit:contain;max-width:360px">'
+      +'<div class="pdf-header"><img src="'+LOGO_B64+'" style="height:144px;object-fit:contain;max-width:540px">'
       +'<div style="flex:1"><div style="font-size:12px;color:#64748b;margin-top:2px">'+t.planTitle+'</div>'
       +'<div style="font-size:11px;color:#94a3b8;margin-top:2px">'+esc(phone)+(addr?' · '+esc(addr):'')+'</div></div>'
       +'<div style="text-align:right;font-size:11px;color:#94a3b8">'+t.date+': '+today+'</div></div>'
