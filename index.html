@@ -246,6 +246,13 @@ tr:last-child td{border-bottom:none}
             <option value="">— Selectează pacient —</option>
           </select>
 
+          <label>Medic curant</label>
+          <select id="sel-doctor" onchange="syncDoctor()">
+            <option value="">— Selectează medicul —</option>
+            <option value="Dr. Muradu Alexandru">Dr. Muradu Alexandru</option>
+            <option value="Dr. Muradu Ana">Dr. Muradu Ana</option>
+          </select>
+
           <label>Etapă activă</label>
           <select id="sel-stage">
             <option value="">— Selectează etapă —</option>
@@ -336,7 +343,11 @@ tr:last-child td{border-bottom:none}
           <label>Adresă</label>
           <input id="clinic-address" value="Chișinău, str. Nicolai Zelinski 15/3" oninput="renderPdfPreview()">
           <label>Medic curant</label>
-          <input id="clinic-doctor" placeholder="Dr. Nume Prenume" oninput="renderPdfPreview()">
+          <select id="clinic-doctor" onchange="renderPdfPreview()">
+            <option value="">— Selectează medicul —</option>
+            <option value="Dr. Muradu Alexandru">Dr. Muradu Alexandru</option>
+            <option value="Dr. Muradu Ana">Dr. Muradu Ana</option>
+          </select>
           <label>Limbă document</label>
           <select id="pdf-lang" onchange="renderPdfPreview()">
             <option value="ro">Română</option>
@@ -695,7 +706,10 @@ function renderStageSelect(){
 function renderTreatment(){
   populatePatientSelect();renderStageSelect();
   var pat=getPat();
-  document.getElementById('plan-patient-name').textContent=pat?'Plan pentru: '+pat.name:'Selectează un pacient';
+  var doctor=getDoctor();
+  document.getElementById('plan-patient-name').innerHTML=pat
+    ?'Plan pentru: <strong>'+esc(pat.name)+'</strong>'+(doctor?' &nbsp;|&nbsp; Medic: <strong>'+esc(doctor)+'</strong>':'')
+    :'Selectează un pacient';
   if(!state.selectedPatientId||!state.stages.length){
     document.getElementById('stages-editor').innerHTML='<div class="loading">'+(state.selectedPatientId?'Nicio etapă — apasă "+ Adaugă etapă nouă"':'Selectează un pacient pentru a începe')+'</div>';
     document.getElementById('grand-total-editor').classList.add('hidden');
@@ -726,7 +740,18 @@ function renderTreatment(){
   document.getElementById('grand-total-editor').textContent='Total general: '+fmt(grandTotal());
 }
 
-function toggleDone(itemId){
+function syncDoctor(){
+  var val=document.getElementById('sel-doctor').value;
+  var pdfDoc=document.getElementById('clinic-doctor');
+  if(pdfDoc) pdfDoc.value=val;
+  renderPdfPreview();
+  renderTreatment();
+}
+
+function getDoctor(){
+  var sel=document.getElementById('sel-doctor');
+  return sel?sel.value:'';
+}
   if(state.doneItems[itemId]) delete state.doneItems[itemId];
   else state.doneItems[itemId]=true;
   renderTreatment();
@@ -792,7 +817,7 @@ function renderPdfPreview(){
   var clinicName=(document.getElementById('clinic-name')||{}).value||'Parodontal Clinic';
   var phone=(document.getElementById('clinic-phone')||{}).value||'';
   var addr=(document.getElementById('clinic-address')||{}).value||'';
-  var doctor=(document.getElementById('clinic-doctor')||{}).value||'';
+  var doctor=(document.getElementById('clinic-doctor')||{}).value||(document.getElementById('sel-doctor')||{}).value||'';
   var today=new Date().toLocaleDateString('ro-RO');
   if(!patId||!state.stages.length){document.getElementById('pdf-preview').innerHTML='<div class="loading">Selectează un pacient cu plan de tratament</div>';return;}
   var html=state.stages.map(function(stage,idx){
