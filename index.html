@@ -872,7 +872,7 @@ async function doLogin(){
   err.textContent='';
   if(!email||!pass){err.textContent='Completează email și parolă.';return;}
   var{data,error}=await sb.auth.signInWithPassword({email,password:pass});
-  if(error){err.textContent='Email sau parolă incorectă.';return;}
+  if(error){err.textContent='Eroare: '+error.message;return;}
   state.currentUser=data.user;showApp();
 }
 async function doLogout(){
@@ -881,14 +881,15 @@ async function doLogout(){
   document.getElementById('login-screen').classList.remove('hidden');
 }
 async function checkSession(){
-  var{data}=await sb.auth.getSession();
-  if(data.session){state.currentUser=data.session.user;showApp();}
+  try{
+    var{data}=await sb.auth.getSession();
+    if(data.session){state.currentUser=data.session.user;showApp();}
+  }catch(e){console.error('Session error:',e);}
 }
 function showApp(){
   document.getElementById('login-screen').classList.add('hidden');
   document.getElementById('app-screen').classList.remove('hidden');
   document.getElementById('user-email').textContent=state.currentUser.email;
-  // Set logos
   var sbLogo=document.getElementById('sb-logo');
   var tbLogo=document.getElementById('tb-logo');
   if(sbLogo) sbLogo.src=LOGO_B64;
@@ -899,13 +900,20 @@ function showApp(){
 
 // ---- DATA ----
 async function loadAll(){
-  var[{data:patients},{data:procedures}]=await Promise.all([
-    sb.from('patients').select('*').order('created_at',{ascending:false}),
-    sb.from('procedures').select('*').order('category').order('name')
-  ]);
-  state.patients=patients||[];
-  state.procedures=procedures||[];
-  updateStats();renderPatients();renderProcedures();renderPdfPatientSelect();populatePatientSelect();
+  try{
+    var[{data:patients,error:e1},{data:procedures,error:e2}]=await Promise.all([
+      sb.from('patients').select('*').order('created_at',{ascending:false}),
+      sb.from('procedures').select('*').order('category').order('name')
+    ]);
+    if(e1)throw e1;
+    if(e2)throw e2;
+    state.patients=patients||[];
+    state.procedures=procedures||[];
+    updateStats();renderPatients();renderProcedures();renderPdfPatientSelect();populatePatientSelect();
+  }catch(e){
+    console.error('loadAll error:',e);
+    showNotif('Eroare la încărcare: '+e.message,false);
+  }
 }
 
 async function loadStagesForPatient(patientId){
