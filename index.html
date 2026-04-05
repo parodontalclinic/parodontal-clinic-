@@ -250,34 +250,6 @@ tr:last-child td{border-bottom:none}
             <option value="Dr. Muradu Ana">Dr. Muradu Ana</option>
           </select>
 
-          <label>Reducere pacient</label>
-          <div style="display:flex;align-items:center;gap:8px">
-            <select id="sel-discount" onchange="state.discount=Number(this.value);renderTreatment();renderPdfPreview()" style="flex:1">
-              <option value="0">Fără reducere</option>
-              <option value="1">1%</option>
-              <option value="2">2%</option>
-              <option value="3">3%</option>
-              <option value="4">4%</option>
-              <option value="5">5%</option>
-              <option value="6">6%</option>
-              <option value="7">7%</option>
-              <option value="8">8%</option>
-              <option value="9">9%</option>
-              <option value="10">10%</option>
-              <option value="11">11%</option>
-              <option value="12">12%</option>
-              <option value="13">13%</option>
-              <option value="14">14%</option>
-              <option value="15">15%</option>
-              <option value="16">16%</option>
-              <option value="17">17%</option>
-              <option value="18">18%</option>
-              <option value="19">19%</option>
-              <option value="20">20%</option>
-            </select>
-            <span id="discount-badge" style="display:none;background:#dcfce7;color:#16a34a;font-weight:700;font-size:13px;padding:6px 12px;border-radius:8px;border:1px solid #86efac;white-space:nowrap"></span>
-          </div>
-
           <label>Etapă activă</label>
           <select id="sel-stage">
             <option value="">— Selectează etapă —</option>
@@ -938,12 +910,22 @@ async function loadAll(){
 
 async function loadStagesForPatient(patientId){
   var{data:stages}=await sb.from('stages').select('*').eq('patient_id',patientId).order('position');
-  state.stages=stages||[];state.stageItems={};
+  state.stages=stages||[];state.stageItems={};state.doneItems={};
   for(var s of state.stages){
     var{data:items}=await sb.from('stage_items').select('*').eq('stage_id',s.id).order('created_at');
     state.stageItems[s.id]=items||[];
+    // Load done states from DB
+    (items||[]).forEach(function(it){if(it.done)state.doneItems[it.id]=true;});
   }
   if(state.stages.length>0&&!state.activeStageId)state.activeStageId=state.stages[0].id;
+  // Load patient doctor
+  var pat=state.patients.find(function(p){return p.id===patientId;});
+  if(pat&&pat.doctor){
+    var selDoc=document.getElementById('sel-doctor');
+    if(selDoc) selDoc.value=pat.doctor;
+    var pdfDoc=document.getElementById('clinic-doctor');
+    if(pdfDoc) pdfDoc.value=pat.doctor;
+  }
 }
 
 function updateStats(){
@@ -1057,9 +1039,9 @@ function renderTreatment(){
     return;
   }
   document.getElementById('grand-total-editor').classList.remove('hidden');
-  var disc=state.discount||0;
   document.getElementById('stages-editor').innerHTML=state.stages.map(function(stage){
     var items=state.stageItems[stage.id]||[];
+    var disc=stage.discount||0;
     var itemsHtml=items.length?items.map(function(item){
       var done=!!state.doneItems[item.id];
       return '<div class="item-row'+(done?' done':'')+'">'
@@ -1071,39 +1053,36 @@ function renderTreatment(){
         +'<button class="btn btn-danger" onclick="removeItem(\''+stage.id+'\',\''+item.id+'\')" style="padding:4px 10px;font-size:11px">Șterge</button>'
         +'</div>';
     }).join(''):'<div style="color:#94a3b8;font-size:12px;padding:6px 0">Nicio procedură adăugată.</div>';
-    return '<div class="stage-block">'
-      +'<div class="stage-header">'
-      +'<div style="font-weight:600;color:#0c3560;font-size:14px">'+esc(stage.name)+'</div>'
-      +'<div style="display:flex;align-items:center;gap:8px">'
-      +(disc>0
-        ?'<span style="font-size:12px;color:#94a3b8;text-decoration:line-through">'+fmt(stTotal(items))+'</span>'
-         +'<span style="background:#dcfce7;color:#16a34a;font-weight:700;font-size:13px;padding:4px 12px;border-radius:8px;border:1px solid #86efac">'+fmt(Math.round(stTotal(items)*(1-disc/100)))+'</span>'
-        :'<span style="background:#e0f2fe;color:#0369a1;font-weight:700;font-size:13px;padding:4px 12px;border-radius:8px;border:1px solid #bae6fd">'+fmt(stTotal(items))+'</span>')
-      +'<button class="btn btn-danger" onclick="deleteStage(\''+stage.id+'\')" style="padding:4px 10px;font-size:11px">Șterge etapă</button>'
-      +'</div></div>'+itemsHtml+'</div>';
-  }).join('');
+    var stTot=stTotal(items);
+    var stTotDisc=disc>0?Math.round(stTot*(1-disc/100)):stTot;
+    var discOpts='<option value="0"'+(disc===0?' selected':'')+'>Fără reducere</option>';
+    for(var d2=1;d2<=20;d2++) discOpts+='<option value="'+d2+'"'+(disc===d2?' selected':'')+'>'+d2+'%</option>';
+    return '<div class="stage-block">'      +'<div class="stage-header">'      +'<div style="font-weight:600;color:#0c3560;font-size:14px">'+esc(stage.name)+'</div>'      +'<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">'      +'<select style="font-size:12px;padding:3px 6px;border-radius:6px;border:1px solid #e2e8f0;color:#0c3560;width:auto;cursor:pointer" onchange="saveStageDiscount(''+stage.id+'',this.value)">'+discOpts+'</select>'      +(disc>0        ?'<span style="font-size:12px;color:#94a3b8;text-decoration:line-through">'+fmt(stTot)+'</span>'         +'<span style="background:#dcfce7;color:#16a34a;font-weight:700;font-size:13px;padding:4px 10px;border-radius:8px;border:1px solid #86efac">'+fmt(stTotDisc)+'</span>'        :'<span style="background:#e0f2fe;color:#0369a1;font-weight:700;font-size:13px;padding:4px 10px;border-radius:8px;border:1px solid #bae6fd">'+fmt(stTot)+'</span>')      +'<button class="btn btn-danger" onclick="deleteStage(''+stage.id+'')" style="padding:4px 10px;font-size:11px">Șterge etapă</button>'      +'</div></div>'+itemsHtml+'</div>';
+    }).join('');
   var gt=grandTotal();
-  var disc2=state.discount||0;
-  var gtDisc=Math.round(gt*(1-disc2/100));
+  var gtWithDisc=state.stages.reduce(function(a,s){
+    var d=s.discount||0;var st=stTotal(state.stageItems[s.id]||[]);
+    return a+Math.round(st*(1-d/100));
+  },0);
+  var hasAnyDisc=state.stages.some(function(s){return (s.discount||0)>0;});
   var gtEl=document.getElementById('grand-total-editor');
-  var badge=document.getElementById('discount-badge');
-  if(disc2>0){
-    gtEl.innerHTML='<div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;padding-top:14px;border-top:1px solid #e2e8f0">'
-      +'<div style="font-size:13px;color:#64748b">Total fără reducere: <span style="font-weight:600;text-decoration:line-through">'+fmt(gt)+'</span>'
-      +' <span style="background:#dc2626;color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px">-'+disc2+'%</span></div>'
-      +'<div style="font-size:18px;font-weight:700;color:#16a34a">Total cu reducere: '+fmt(gtDisc)+'</div>'
-      +'</div>';
-    if(badge){badge.textContent='-'+disc2+'%';badge.style.display='inline-block';}
+  if(hasAnyDisc){
+    gtEl.innerHTML='<div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;padding-top:14px;border-top:1px solid #e2e8f0">'      +'<div style="font-size:13px;color:#64748b">Total fără reducere: <span style="font-weight:600;text-decoration:line-through">'+fmt(gt)+'</span></div>'      +'<div style="font-size:18px;font-weight:700;color:#16a34a">Total cu reducere: '+fmt(gtWithDisc)+'</div>'      +'</div>';
   } else {
     gtEl.textContent='Total general: '+fmt(gt);
-    if(badge) badge.style.display='none';
   }
 }
 
-function syncDoctor(){
+async function syncDoctor(){
   var val=document.getElementById('sel-doctor').value;
   var pdfDoc=document.getElementById('clinic-doctor');
   if(pdfDoc) pdfDoc.value=val;
+  // Save doctor to patient record
+  if(state.selectedPatientId&&val){
+    await sb.from('patients').update({doctor:val}).eq('id',state.selectedPatientId);
+    var pat=state.patients.find(function(p){return p.id===state.selectedPatientId;});
+    if(pat) pat.doctor=val;
+  }
   renderPdfPreview();
   renderTreatment();
 }
@@ -1112,9 +1091,26 @@ function getDoctor(){
   var sel=document.getElementById('sel-doctor');
   return sel?sel.value:'';
 }
-function toggleDone(itemId){
-  if(state.doneItems[itemId]) delete state.doneItems[itemId];
-  else state.doneItems[itemId]=true;
+async function saveStageDiscount(stageId,disc){
+  disc=parseInt(disc)||0;
+  await sb.from('stages').update({discount:disc}).eq('id',stageId);
+  var s=state.stages.find(function(s){return s.id===stageId;});
+  if(s) s.discount=disc;
+  renderTreatment();
+  renderPdfPreview();
+}
+
+async function toggleDone(itemId){
+  var newDone=!state.doneItems[itemId];
+  if(newDone) state.doneItems[itemId]=true;
+  else delete state.doneItems[itemId];
+  await sb.from('stage_items').update({done:newDone}).eq('id',itemId);
+  // Update local state
+  for(var sid in state.stageItems){
+    state.stageItems[sid]=state.stageItems[sid].map(function(it){
+      return it.id===itemId?Object.assign({},it,{done:newDone}):it;
+    });
+  }
   renderTreatment();
 }
 
