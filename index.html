@@ -138,6 +138,16 @@ tr:last-child td{border-bottom:none}
 .doc-thumb-pdf{width:56px;height:56px;border-radius:8px;background:#fef2f2;display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer;border:1px solid #fecaca}
 .doc-name{font-size:13px;font-weight:600;color:#1e293b;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .doc-meta{font-size:11px;color:#94a3b8;margin-top:2px}
+.rem-card{border:1px solid #e2e8f0;border-radius:10px;padding:14px;margin-bottom:10px;transition:all 0.15s;background:#fff}
+.rem-card.urgent{border-left:4px solid #ef4444;background:#fef2f2}
+.rem-card.soon{border-left:4px solid #f59e0b;background:#fffbeb}
+.rem-card.upcoming{border-left:4px solid #22c55e;background:#f0fdf4}
+.rem-card.done{border-left:4px solid #94a3b8;background:#f8fafc;opacity:0.7}
+.rem-patient{font-size:14px;font-weight:700;color:#0c3560}
+.rem-type{font-size:13px;font-weight:600;color:#1e293b;margin-top:2px}
+.rem-date{font-size:12px;color:#64748b;margin-top:4px}
+.rem-note{font-size:12px;color:#475569;margin-top:4px;font-style:italic}
+.rem-plan{font-size:11px;color:#64748b;margin-top:6px;padding:8px;background:rgba(0,0,0,0.03);border-radius:6px}
 </style>
 </head>
 <body>
@@ -178,6 +188,10 @@ tr:last-child td{border-bottom:none}
     <button class="sidebar-btn" id="sbtn-procedures" onclick="switchTab('procedures')">
       <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M8 12h8M12 8v8"/></svg>Catalog proceduri
     </button>
+    <button class="sidebar-btn" id="sbtn-reminders" onclick="switchTab('reminders')" style="position:relative">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0"/></svg>Notificări
+      <span id="reminder-badge" class="hidden" style="position:absolute;top:6px;right:10px;background:#ef4444;color:#fff;font-size:10px;font-weight:700;border-radius:999px;padding:1px 6px;min-width:18px;text-align:center"></span>
+    </button>
     <div class="sidebar-spacer"></div>
     <div class="sidebar-user">
       <div class="user-email" id="user-email"></div>
@@ -210,6 +224,10 @@ tr:last-child td{border-bottom:none}
       <button class="tab-btn" id="tab-btn-treatment" onclick="switchTab('treatment')">Plan tratament</button>
       <button class="tab-btn" id="tab-btn-pdf" onclick="switchTab('pdf')">Export PDF</button>
       <button class="tab-btn" id="tab-btn-procedures" onclick="switchTab('procedures')">Catalog proceduri</button>
+      <button class="tab-btn" id="tab-btn-reminders" onclick="switchTab('reminders')" style="position:relative">
+        🔔 Notificări
+        <span id="reminder-badge-top" class="hidden" style="position:absolute;top:4px;right:6px;background:#ef4444;color:#fff;font-size:9px;font-weight:700;border-radius:999px;padding:1px 5px"></span>
+      </button>
     </div>
 
     <!-- PACIENTI -->
@@ -469,6 +487,100 @@ tr:last-child td{border-bottom:none}
             <thead><tr><th>Procedură</th><th>Categorie</th><th style="text-align:right">Preț</th><th></th></tr></thead>
             <tbody id="proc-table"></tbody>
           </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- NOTIFICARI -->
+    <div id="tab-reminders" class="tab-content">
+      <div class="two-col">
+
+        <!-- STANGA: adauga reminder -->
+        <div class="card">
+          <div class="card-title">Adaugă reminder</div>
+          <div class="card-sub">Setează o notificare automată pentru pacient</div>
+
+          <label>Pacient</label>
+          <select id="rem-patient-sel" onchange="onReminderPatientChange()">
+            <option value="">— Selectează pacient —</option>
+          </select>
+
+          <label>Tip reminder</label>
+          <select id="rem-type">
+            <option value="Igienizare profesională">Igienizare profesională</option>
+            <option value="Control parodontal">Control parodontal</option>
+            <option value="Continuare tratament">Continuare tratament</option>
+            <option value="Control radiologic">Control radiologic</option>
+            <option value="Detartraj">Detartraj</option>
+            <option value="Consultație de urmărire">Consultație de urmărire</option>
+            <option value="Altele">Altele...</option>
+          </select>
+
+          <label>Interval</label>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px">
+            <select id="rem-interval-num">
+              <option value="1">1</option><option value="2">2</option>
+              <option value="3">3</option><option value="6">6</option>
+              <option value="9">9</option><option value="12">12</option>
+              <option value="18">18</option><option value="24">24</option>
+            </select>
+            <select id="rem-interval-unit">
+              <option value="zile">Zile</option>
+              <option value="saptamani">Săptămâni</option>
+              <option value="luni" selected>Luni</option>
+              <option value="ani">Ani</option>
+            </select>
+          </div>
+          <div id="rem-date-preview" style="font-size:12px;color:#0c3560;margin-top:6px;padding:6px 10px;background:#eff6ff;border-radius:6px;display:none"></div>
+
+          <label>Notă (opțional)</label>
+          <input id="rem-note" placeholder="Ex: Programare igienizare după finalizarea tratamentului">
+
+          <button class="btn btn-primary btn-full" onclick="addReminder()" style="margin-top:14px">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0"/></svg>
+            Salvează reminder
+          </button>
+        </div>
+
+        <!-- DREAPTA: lista notificari -->
+        <div class="card" style="overflow-y:auto;max-height:85vh">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+            <div class="card-title" style="margin-bottom:0">Notificări active</div>
+            <div style="display:flex;gap:6px">
+              <button class="btn btn-sm" id="rem-filter-all" onclick="filterReminders('all')" style="font-size:11px;background:#0c3560;color:#fff;border-color:#0c3560">Toate</button>
+              <button class="btn btn-sm" id="rem-filter-urgent" onclick="filterReminders('urgent')" style="font-size:11px">🔴 Expirate</button>
+              <button class="btn btn-sm" id="rem-filter-soon" onclick="filterReminders('soon')" style="font-size:11px">🟡 7 zile</button>
+              <button class="btn btn-sm" id="rem-filter-upcoming" onclick="filterReminders('upcoming')" style="font-size:11px">🟢 30 zile</button>
+            </div>
+          </div>
+          <div id="reminders-list"><div class="loading">Se încarcă...</div></div>
+        </div>
+      </div>
+
+      <!-- Modal reprogramare -->
+      <div id="reschedule-modal" class="hidden" style="position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center">
+        <div style="background:#fff;border-radius:14px;padding:24px;width:380px;max-width:95vw;box-shadow:0 20px 60px rgba(0,0,0,0.3)">
+          <div style="font-size:16px;font-weight:600;color:#0c3560;margin-bottom:16px">Reprogramează reminder</div>
+          <input type="hidden" id="reschedule-id">
+          <label>Interval nou</label>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px">
+            <select id="reschedule-num">
+              <option value="1">1</option><option value="2">2</option>
+              <option value="3">3</option><option value="6">6</option>
+              <option value="9">9</option><option value="12">12</option>
+              <option value="18">18</option><option value="24">24</option>
+            </select>
+            <select id="reschedule-unit">
+              <option value="zile">Zile</option>
+              <option value="saptamani">Săptămâni</option>
+              <option value="luni" selected>Luni</option>
+              <option value="ani">Ani</option>
+            </select>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:16px">
+            <button class="btn btn-primary" onclick="confirmReschedule()" style="flex:1">Reprogramează</button>
+            <button class="btn" onclick="closeRescheduleModal()" style="flex:1">Anulează</button>
+          </div>
         </div>
       </div>
     </div>
@@ -1022,6 +1134,7 @@ async function loadAll(){
     state.patients=patients||[];
     state.procedures=procedures||[];
     updateStats();renderPatients();renderProcedures();renderPdfPatientSelect();populatePatientSelect();
+    await loadReminders();
   }catch(e){
     console.error('loadAll error:',e);
     showNotif('Eroare la încărcare: '+e.message,false);
@@ -1429,6 +1542,7 @@ function switchTab(tab){
   var sb2=document.getElementById('sbtn-'+tab);if(sb2)sb2.classList.add('active');
   if(tab==='pdf'){renderPdfPatientSelect();renderPdfPreview();}
   if(tab==='procedures')renderProcedures();
+  if(tab==='reminders'){populateReminderPatientSelect();loadReminders();}
 }
 
 // ---- DOCUMENTE + OBSERVATII ----
@@ -1556,6 +1670,234 @@ function closeDocModal(){
 
 // ---- END DOCUMENTE + OBSERVATII ----
 
+
+// ---- REMINDERS ----
+var state_reminders=[];
+var rem_filter='all';
+
+function populateReminderPatientSelect(){
+  var sel=document.getElementById('rem-patient-sel');
+  if(!sel)return;
+  sel.innerHTML='<option value="">— Selectează pacient —</option>'
+    +state.patients.map(function(p){return'<option value="'+p.id+'">'+esc(p.name)+'</option>';}).join('');
+}
+
+function onReminderPatientChange(){
+  updateReminderDatePreview();
+}
+
+function calcReminderDate(){
+  var num=parseInt(document.getElementById('rem-interval-num').value)||1;
+  var unit=document.getElementById('rem-interval-unit').value;
+  var d=new Date();
+  if(unit==='zile') d.setDate(d.getDate()+num);
+  else if(unit==='saptamani') d.setDate(d.getDate()+num*7);
+  else if(unit==='luni') d.setMonth(d.getMonth()+num);
+  else if(unit==='ani') d.setFullYear(d.getFullYear()+num);
+  return d;
+}
+
+function updateReminderDatePreview(){
+  var d=calcReminderDate();
+  var prev=document.getElementById('rem-date-preview');
+  if(prev){
+    prev.style.display='block';
+    prev.textContent='📅 Data reminder: '+d.toLocaleDateString('ro-RO',{day:'2-digit',month:'long',year:'numeric'});
+  }
+}
+
+// Auto-update preview on change
+document.addEventListener('change',function(e){
+  if(e.target.id==='rem-interval-num'||e.target.id==='rem-interval-unit') updateReminderDatePreview();
+});
+
+async function addReminder(){
+  var patId=document.getElementById('rem-patient-sel').value;
+  var type=document.getElementById('rem-type').value;
+  var note=document.getElementById('rem-note').value;
+  if(!patId){showNotif('Selectează un pacient!',false);return;}
+  var remindAt=calcReminderDate().toISOString();
+  var{error}=await sb.from('reminders').insert([{patient_id:patId,type:type,note:note,remind_at:remindAt}]);
+  if(error){showNotif('Eroare: '+error.message,false);return;}
+  document.getElementById('rem-note').value='';
+  showNotif('✓ Reminder salvat!');
+  await loadReminders();
+  updateReminderBadge();
+}
+
+async function loadReminders(){
+  var{data,error}=await sb.from('reminders')
+    .select('*, patients(name,phone,diagnosis)')
+    .order('remind_at',{ascending:true});
+  if(error){console.error(error);return;}
+  state_reminders=data||[];
+  renderRemindersList();
+  updateReminderBadge();
+}
+
+function updateReminderBadge(){
+  var now=new Date();
+  var urgent=state_reminders.filter(function(r){
+    return !r.done&&new Date(r.remind_at)<=now;
+  }).length;
+  var soon=state_reminders.filter(function(r){
+    var d=new Date(r.remind_at);
+    return !r.done&&d>now&&d<=(new Date(now.getTime()+7*24*60*60*1000));
+  }).length;
+  var count=urgent+soon;
+  ['reminder-badge','reminder-badge-top'].forEach(function(id){
+    var el=document.getElementById(id);
+    if(!el)return;
+    if(count>0){el.textContent=count;el.classList.remove('hidden');}
+    else el.classList.add('hidden');
+  });
+}
+
+function filterReminders(f){
+  rem_filter=f;
+  ['all','urgent','soon','upcoming'].forEach(function(k){
+    var btn=document.getElementById('rem-filter-'+k);
+    if(!btn)return;
+    btn.style.background=k===f?'#0c3560':'';
+    btn.style.color=k===f?'#fff':'';
+    btn.style.borderColor=k===f?'#0c3560':'';
+  });
+  renderRemindersList();
+}
+
+function renderRemindersList(){
+  var el=document.getElementById('reminders-list');
+  if(!el)return;
+  var now=new Date();
+  var week=new Date(now.getTime()+7*24*60*60*1000);
+  var month=new Date(now.getTime()+30*24*60*60*1000);
+
+  var filtered=state_reminders.filter(function(r){
+    if(r.done) return rem_filter==='all';
+    var d=new Date(r.remind_at);
+    if(rem_filter==='urgent') return d<=now;
+    if(rem_filter==='soon') return d>now&&d<=week;
+    if(rem_filter==='upcoming') return d>now&&d<=month;
+    return true;
+  });
+
+  if(!filtered.length){
+    el.innerHTML='<div style="color:#94a3b8;font-size:13px;text-align:center;padding:30px">Nicio notificare în această categorie.</div>';
+    return;
+  }
+
+  el.innerHTML=filtered.map(function(r){
+    var d=new Date(r.remind_at);
+    var now2=new Date();
+    var diff=d-now2;
+    var cardClass='upcoming';
+    var statusLabel='';
+    if(r.done){
+      cardClass='done';
+      statusLabel='<span style="background:#e2e8f0;color:#64748b;font-size:10px;padding:2px 8px;border-radius:999px;font-weight:600">✓ Rezolvat</span>';
+    } else if(d<=now2){
+      cardClass='urgent';
+      var days=Math.abs(Math.ceil(diff/(1000*60*60*24)));
+      statusLabel='<span style="background:#fef2f2;color:#ef4444;font-size:10px;padding:2px 8px;border-radius:999px;font-weight:600;border:1px solid #fecaca">🔴 Expirat cu '+days+' zi(le)</span>';
+    } else if(d<=new Date(now2.getTime()+7*24*60*60*1000)){
+      var days2=Math.ceil(diff/(1000*60*60*24));
+      cardClass='soon';
+      statusLabel='<span style="background:#fffbeb;color:#d97706;font-size:10px;padding:2px 8px;border-radius:999px;font-weight:600;border:1px solid #fde68a">🟡 Peste '+days2+' zi(le)</span>';
+    } else {
+      var days3=Math.ceil(diff/(1000*60*60*24));
+      statusLabel='<span style="background:#f0fdf4;color:#16a34a;font-size:10px;padding:2px 8px;border-radius:999px;font-weight:600;border:1px solid #bbf7d0">🟢 Peste '+days3+' zi(le)</span>';
+    }
+
+    var pat=r.patients||{};
+    var planSummary='';
+    // Find patient stages for plan summary
+    var patStages=state.stages.filter(function(s){return s.patient_id===r.patient_id;});
+    if(state.selectedPatientId===r.patient_id&&patStages.length){
+      var totalProc=patStages.reduce(function(a,s){return a+(state.stageItems[s.id]||[]).length;},0);
+      var totalVal=grandTotal();
+      planSummary='<div class="rem-plan">📋 Plan: '+patStages.length+' etape · '+totalProc+' proceduri · Total: '+fmt(totalVal)+'</div>';
+    }
+
+    var actions='';
+    if(!r.done){
+      actions='<div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap">'
+        +'<button class="btn btn-primary" onclick="markReminderDone(\''+r.id+'\')" style="font-size:12px;padding:5px 12px">✓ Marcat contactat</button>'
+        +'<button class="btn" onclick="openReschedule(\''+r.id+'\')" style="font-size:12px;padding:5px 12px">🔄 Reprogramează</button>'
+        +'<button class="btn btn-danger" onclick="deleteReminder(\''+r.id+'\')" style="font-size:12px;padding:5px 12px">Șterge</button>'
+        +'</div>';
+    } else {
+      actions='<div style="display:flex;gap:6px;margin-top:10px">'
+        +'<button class="btn" onclick="reopenReminder(\''+r.id+'\')" style="font-size:12px;padding:5px 12px">↩ Redeschide</button>'
+        +'<button class="btn btn-danger" onclick="deleteReminder(\''+r.id+'\')" style="font-size:12px;padding:5px 12px">Șterge</button>'
+        +'</div>';
+    }
+
+    return '<div class="rem-card '+cardClass+'">'
+      +'<div style="display:flex;align-items:start;justify-content:space-between;gap:8px;flex-wrap:wrap">'
+      +'<div style="flex:1">'
+      +'<div class="rem-patient">'+esc(pat.name||'—')
+        +(pat.phone?'<span style="font-size:11px;font-weight:400;color:#64748b;margin-left:8px">📞 '+esc(pat.phone)+'</span>':'')
+        +'</div>'
+      +'<div class="rem-type">'+esc(r.type)+'</div>'
+      +(r.note?'<div class="rem-note">'+esc(r.note)+'</div>':'')
+      +(pat.diagnosis?'<div style="font-size:11px;color:#64748b;margin-top:3px">Diagnostic: '+esc(pat.diagnosis)+'</div>':'')
+      +planSummary
+      +'</div>'
+      +'<div style="text-align:right;flex-shrink:0">'
+      +statusLabel
+      +'<div class="rem-date" style="margin-top:4px">📅 '+d.toLocaleDateString('ro-RO',{day:'2-digit',month:'long',year:'numeric'})+'</div>'
+      +'</div>'
+      +'</div>'
+      +actions
+      +'</div>';
+  }).join('');
+}
+
+async function markReminderDone(id){
+  await sb.from('reminders').update({done:true,done_at:new Date().toISOString()}).eq('id',id);
+  await loadReminders();
+  showNotif('✓ Marcat ca contactat!');
+}
+
+async function reopenReminder(id){
+  await sb.from('reminders').update({done:false,done_at:null}).eq('id',id);
+  await loadReminders();
+  showNotif('Reminder redeschis.');
+}
+
+async function deleteReminder(id){
+  if(!confirm('Ștergi acest reminder?'))return;
+  await sb.from('reminders').delete().eq('id',id);
+  await loadReminders();
+  showNotif('Reminder șters.');
+}
+
+function openReschedule(id){
+  document.getElementById('reschedule-id').value=id;
+  var modal=document.getElementById('reschedule-modal');
+  modal.classList.remove('hidden');modal.style.display='flex';
+}
+
+function closeRescheduleModal(){
+  var modal=document.getElementById('reschedule-modal');
+  modal.classList.add('hidden');modal.style.display='none';
+}
+
+async function confirmReschedule(){
+  var id=document.getElementById('reschedule-id').value;
+  var num=parseInt(document.getElementById('reschedule-num').value)||1;
+  var unit=document.getElementById('reschedule-unit').value;
+  var d=new Date();
+  if(unit==='zile') d.setDate(d.getDate()+num);
+  else if(unit==='saptamani') d.setDate(d.getDate()+num*7);
+  else if(unit==='luni') d.setMonth(d.getMonth()+num);
+  else if(unit==='ani') d.setFullYear(d.getFullYear()+num);
+  await sb.from('reminders').update({remind_at:d.toISOString(),done:false,done_at:null}).eq('id',id);
+  closeRescheduleModal();
+  await loadReminders();
+  showNotif('✓ Reminder reprogramat pentru '+d.toLocaleDateString('ro-RO')+'!');
+}
+// ---- END REMINDERS ----
 
 // Set login logo
 var loginLogo = document.querySelector('.login-box img');
