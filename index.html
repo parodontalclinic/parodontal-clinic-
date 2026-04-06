@@ -292,9 +292,19 @@ tr:last-child td{border-bottom:none}
 
             <!-- DINTI -->
             <div class="teeth-section">
-              <div class="teeth-label">Poziție dinte (selectează unul sau mai mulți)</div>
-              <div class="teeth-groups" id="teeth-grid"></div>
-              <div class="teeth-actions">
+              <div class="teeth-label">Poziție dinte</div>
+              <div style="display:flex;gap:6px;margin-bottom:8px">
+                <select id="sel-patient-type" onchange="buildTeethGrid()" style="flex:1;font-size:12px;padding:5px 8px;border-radius:7px;border:1px solid #e2e8f0">
+                  <option value="adult">Adult</option>
+                  <option value="copil">Copil</option>
+                </select>
+                <select id="sel-arch" onchange="buildTeethGrid()" style="flex:1;font-size:12px;padding:5px 8px;border-radius:7px;border:1px solid #e2e8f0">
+                  <option value="superior">Arcada superioară</option>
+                  <option value="inferior">Arcada inferioară</option>
+                </select>
+              </div>
+              <div id="teeth-grid" style="display:flex;flex-wrap:wrap;gap:5px;padding:10px;background:#f8fafc;border-radius:8px;border:1px solid #e2e8f0;min-height:52px"></div>
+              <div class="teeth-actions" style="margin-top:6px">
                 <button class="btn btn-sm" onclick="clearTeeth()">Golește selecția</button>
                 <span id="selected-teeth-count" style="font-size:12px;color:#64748b;align-self:center"></span>
               </div>
@@ -765,16 +775,16 @@ var state={currentUser:null,patients:[],procedures:[],stages:[],stageItems:{},do
 var cart=[];
 var selectedTeeth=[];
 
-var TEETH_GROUPS=[
-  {label:'Maxilar drept adult',teeth:['18','17','16','15','14','13','12','11']},
-  {label:'Maxilar stâng adult',teeth:['21','22','23','24','25','26','27','28']},
-  {label:'Mandibulă stâng adult',teeth:['31','32','33','34','35','36','37','38']},
-  {label:'Mandibulă drept adult',teeth:['41','42','43','44','45','46','47','48']},
-  {label:'Maxilar drept copil',teeth:['51','52','53','54','55']},
-  {label:'Maxilar stâng copil',teeth:['61','62','63','64','65']},
-  {label:'Mandibulă stâng copil',teeth:['71','72','73','74','75']},
-  {label:'Mandibulă drept copil',teeth:['81','82','83','84','85']}
-];
+var TEETH_CONFIG={
+  adult:{
+    superior:['18','17','16','15','14','13','12','11','21','22','23','24','25','26','27','28'],
+    inferior:['48','47','46','45','44','43','42','41','31','32','33','34','35','36','37','38']
+  },
+  copil:{
+    superior:['55','54','53','52','51','61','62','63','64','65'],
+    inferior:['85','84','83','82','81','71','72','73','74','75']
+  }
+};
 
 var labels={
   ro:{patient:'Pacient',doctor:'Medic curant',stage:'Etapă',procedure:'Procedură',price:'Preț',stageTotal:'Total etapă',grandTotal:'Total general',planTitle:'Plan de tratament stomatologic',recommendations:'Recomandări',date:'Data',tooth:'Dinte',rec:'Igienă orală atentă, controale periodice și respectarea etapelor de tratament.'},
@@ -803,16 +813,25 @@ function showNotif(msg,ok){
 
 // ---- TEETH GRID ----
 function buildTeethGrid(){
+  var type=(document.getElementById('sel-patient-type')||{}).value||'adult';
+  var arch=(document.getElementById('sel-arch')||{}).value||'superior';
+  var teeth=TEETH_CONFIG[type][arch];
+  var mid=Math.ceil(teeth.length/2);
+  var left=teeth.slice(0,mid);
+  var right=teeth.slice(mid);
+  selectedTeeth=selectedTeeth.filter(function(t){return teeth.indexOf(t)>=0;});
   var grid=document.getElementById('teeth-grid');
-  grid.innerHTML=TEETH_GROUPS.map(function(g){
-    return '<div style="margin-bottom:8px">'
-      +'<div class="teeth-group-label">'+g.label+'</div>'
-      +'<div class="teeth-row">'+g.teeth.map(function(t){
-        return '<button class="tooth-btn" id="tooth-'+t+'" onclick="toggleTooth(\''+t+'\')">'+t+'</button>';
-      }).join('')+'</div></div>';
+  grid.innerHTML=left.map(function(t){
+    var sel=selectedTeeth.indexOf(t)>=0;
+    return '<button class="tooth-btn'+(sel?' selected':'')+ '" id="tooth-'+t+'" onclick="toggleTooth(\''+t+'\')">'+ t+'</button>';
+  }).join('')
+  +'<div style="width:2px;background:#e2e8f0;border-radius:2px;margin:0 3px;align-self:stretch"></div>'
+  +right.map(function(t){
+    var sel=selectedTeeth.indexOf(t)>=0;
+    return '<button class="tooth-btn'+(sel?' selected':'')+ '" id="tooth-'+t+'" onclick="toggleTooth(\''+t+'\')">'+ t+'</button>';
   }).join('');
+  updateTeethCount();
 }
-
 function toggleTooth(t){
   var idx=selectedTeeth.indexOf(t);
   if(idx>=0){selectedTeeth.splice(idx,1);document.getElementById('tooth-'+t).classList.remove('selected');}
