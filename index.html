@@ -1035,7 +1035,7 @@ async function loadStagesForPatient(patientId){
     var{data:items}=await sb.from('stage_items').select('*').eq('stage_id',s.id).order('created_at');
     state.stageItems[s.id]=items||[];
     // Load done states from DB
-    (items||[]).forEach(function(it){if(it.done)state.doneItems[it.id]=true;});
+    (items||[]).forEach(function(it){if(it.done)state.doneItems[it.id]=it.done_at||true;});
   }
   if(state.stages.length>0&&!state.activeStageId)state.activeStageId=state.stages[0].id;
   // Load patient doctor
@@ -1182,11 +1182,13 @@ function renderTreatment(){
       var groupHead=hasGroup?'<div style="font-size:11px;font-weight:600;color:#475569;background:#f1f5f9;padding:4px 10px;border-radius:6px;margin-bottom:4px;margin-top:10px;display:inline-block">'+esc(gLabel)+'</div>':'';
       return groupHead+g.items.map(function(item){
         var done=!!state.doneItems[item.id];
+        var doneAt=item.done_at?new Date(item.done_at).toLocaleString('ro-RO',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}):'';
+        var doneLabel=done&&doneAt?'<span style="font-size:10px;color:#16a34a;font-weight:500;margin-left:8px;white-space:nowrap">✓ '+doneAt+'</span>':'';
         return '<div class="item-row'+(done?' done':'')+'">'
           +'<div class="item-check'+(done?' checked':'')+'" onclick="toggleDone(\''+item.id+'\')">'
           +'<svg viewBox="0 0 14 14" fill="none" stroke="#fff" stroke-width="2.5"><polyline points="2,7 6,11 12,3"/></svg>'
           +'</div>'
-          +'<div class="item-name">'+esc(item.name)+'</div>'
+          +'<div class="item-name" style="display:flex;align-items:center;flex-wrap:wrap;gap:2px">'+esc(item.name)+doneLabel+'</div>'
           +'<div class="item-price">'+fmt(item.price||0)+'</div>'
           +'<button class="btn btn-danger" onclick="removeItem(\''+stage.id+'\',\''+item.id+'\')" style="padding:4px 10px;font-size:11px">Șterge</button>'
           +'</div>';
@@ -1241,13 +1243,13 @@ async function saveStageDiscount(stageId,disc){
 
 async function toggleDone(itemId){
   var newDone=!state.doneItems[itemId];
-  if(newDone) state.doneItems[itemId]=true;
+  var doneAt=newDone?new Date().toISOString():null;
+  if(newDone) state.doneItems[itemId]=doneAt;
   else delete state.doneItems[itemId];
-  await sb.from('stage_items').update({done:newDone}).eq('id',itemId);
-  // Update local state
+  await sb.from('stage_items').update({done:newDone,done_at:doneAt}).eq('id',itemId);
   for(var sid in state.stageItems){
     state.stageItems[sid]=state.stageItems[sid].map(function(it){
-      return it.id===itemId?Object.assign({},it,{done:newDone}):it;
+      return it.id===itemId?Object.assign({},it,{done:newDone,done_at:doneAt}):it;
     });
   }
   renderTreatment();
