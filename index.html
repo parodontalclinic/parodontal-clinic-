@@ -143,6 +143,8 @@ tr:last-child td{border-bottom:none}
 .rem-card.soon{border-left:4px solid #f59e0b;background:#fffbeb}
 .rem-card.upcoming{border-left:4px solid #22c55e;background:#f0fdf4}
 .rem-card.done{border-left:4px solid #94a3b8;background:#f8fafc;opacity:0.7}
+.rem-card.refused{border-left:4px solid #ef4444;background:#fef2f2;opacity:0.8}
+.rem-card.no_answer{border-left:4px solid #f59e0b;background:#fffbeb}
 .rem-patient{font-size:14px;font-weight:700;color:#0c3560}
 .rem-type{font-size:13px;font-weight:600;color:#1e293b;margin-top:2px}
 .rem-date{font-size:12px;color:#64748b;margin-top:4px}
@@ -1735,14 +1737,16 @@ async function loadReminders(){
   updateReminderBadge();
 }
 
+function isActive(r){return r.status==='active'||r.status==='no_answer'||(!r.status&&!r.done);}
+
 function updateReminderBadge(){
   var now=new Date();
   var urgent=state_reminders.filter(function(r){
-    return !r.done&&new Date(r.remind_at)<=now;
+    return isActive(r)&&new Date(r.remind_at)<=now;
   }).length;
   var soon=state_reminders.filter(function(r){
     var d=new Date(r.remind_at);
-    return !r.done&&d>now&&d<=(new Date(now.getTime()+7*24*60*60*1000));
+    return isActive(r)&&d>now&&d<=(new Date(now.getTime()+7*24*60*60*1000));
   }).length;
   var count=urgent+soon;
   ['reminder-badge','reminder-badge-top'].forEach(function(id){
@@ -1773,11 +1777,12 @@ function renderRemindersList(){
   var month=new Date(now.getTime()+30*24*60*60*1000);
 
   var filtered=state_reminders.filter(function(r){
-    if(r.done) return rem_filter==='all';
+    var active=isActive(r);
     var d=new Date(r.remind_at);
-    if(rem_filter==='urgent') return d<=now;
-    if(rem_filter==='soon') return d>now&&d<=week;
-    if(rem_filter==='upcoming') return d>now&&d<=month;
+    if(rem_filter==='urgent') return active&&d<=now;
+    if(rem_filter==='soon') return active&&d>now&&d<=week;
+    if(rem_filter==='upcoming') return active&&d>now&&d<=month;
+    // 'all' — show everything
     return true;
   });
 
@@ -1790,79 +1795,79 @@ function renderRemindersList(){
     var d=new Date(r.remind_at);
     var now2=new Date();
     var diff=d-now2;
+    var status=r.status||(r.done?'scheduled':'active');
     var cardClass='upcoming';
     var statusLabel='';
-    if(r.done){
-      cardClass='done';
-      statusLabel='<span style="background:#e2e8f0;color:#64748b;font-size:10px;padding:2px 8px;border-radius:999px;font-weight:600">✓ Rezolvat</span>';
-    } else if(d<=now2){
-      cardClass='urgent';
+    var timeLabel='';
+
+    // Time label
+    if(d<=now2){
       var days=Math.abs(Math.ceil(diff/(1000*60*60*24)));
-      statusLabel='<span style="background:#fef2f2;color:#ef4444;font-size:10px;padding:2px 8px;border-radius:999px;font-weight:600;border:1px solid #fecaca">🔴 Expirat cu '+days+' zi(le)</span>';
-    } else if(d<=new Date(now2.getTime()+7*24*60*60*1000)){
+      timeLabel='<div style="font-size:11px;color:#ef4444;margin-top:2px">🔴 Expirat cu '+days+' zi(le) în urmă</div>';
+    } else if(d<=week){
       var days2=Math.ceil(diff/(1000*60*60*24));
-      cardClass='soon';
-      statusLabel='<span style="background:#fffbeb;color:#d97706;font-size:10px;padding:2px 8px;border-radius:999px;font-weight:600;border:1px solid #fde68a">🟡 Peste '+days2+' zi(le)</span>';
+      timeLabel='<div style="font-size:11px;color:#d97706;margin-top:2px">🟡 Peste '+days2+' zi(le)</div>';
     } else {
       var days3=Math.ceil(diff/(1000*60*60*24));
-      statusLabel='<span style="background:#f0fdf4;color:#16a34a;font-size:10px;padding:2px 8px;border-radius:999px;font-weight:600;border:1px solid #bbf7d0">🟢 Peste '+days3+' zi(le)</span>';
+      timeLabel='<div style="font-size:11px;color:#16a34a;margin-top:2px">🟢 Peste '+days3+' zi(le)</div>';
+    }
+
+    // Card style + status badge based on status
+    if(status==='scheduled'){
+      cardClass='done';
+      statusLabel='<span style="background:#dcfce7;color:#16a34a;font-size:11px;padding:3px 10px;border-radius:999px;font-weight:700;border:1px solid #86efac">✓ Programat</span>';
+    } else if(status==='refused'){
+      cardClass='refused';
+      statusLabel='<span style="background:#fef2f2;color:#dc2626;font-size:11px;padding:3px 10px;border-radius:999px;font-weight:700;border:1px solid #fca5a5">✗ Nu dorește să se prezinte</span>';
+    } else if(status==='no_answer'){
+      cardClass='no_answer';
+      statusLabel='<span style="background:#fffbeb;color:#d97706;font-size:11px;padding:3px 10px;border-radius:999px;font-weight:700;border:1px solid #fde68a">📵 Nu răspunde</span>';
+    } else {
+      if(d<=now2) cardClass='urgent';
+      else if(d<=week) cardClass='soon';
     }
 
     var pat=r.patients||{};
     var planSummary='';
-    // Find patient stages for plan summary
     var patStages=state.stages.filter(function(s){return s.patient_id===r.patient_id;});
     if(state.selectedPatientId===r.patient_id&&patStages.length){
       var totalProc=patStages.reduce(function(a,s){return a+(state.stageItems[s.id]||[]).length;},0);
-      var totalVal=grandTotal();
-      planSummary='<div class="rem-plan">📋 Plan: '+patStages.length+' etape · '+totalProc+' proceduri · Total: '+fmt(totalVal)+'</div>';
+      planSummary='<div class="rem-plan">📋 Plan: '+patStages.length+' etape · '+totalProc+' proceduri · Total: '+fmt(grandTotal())+'</div>';
     }
 
-    var actions='';
-    if(!r.done){
-      actions='<div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap">'
-        +'<button class="btn btn-primary" onclick="markReminderDone(\''+r.id+'\')" style="font-size:12px;padding:5px 12px">✓ Marcat contactat</button>'
-        +'<button class="btn" onclick="openReschedule(\''+r.id+'\')" style="font-size:12px;padding:5px 12px">🔄 Reprogramează</button>'
-        +'<button class="btn btn-danger" onclick="deleteReminder(\''+r.id+'\')" style="font-size:12px;padding:5px 12px">Șterge</button>'
-        +'</div>';
-    } else {
-      actions='<div style="display:flex;gap:6px;margin-top:10px">'
-        +'<button class="btn" onclick="reopenReminder(\''+r.id+'\')" style="font-size:12px;padding:5px 12px">↩ Redeschide</button>'
-        +'<button class="btn btn-danger" onclick="deleteReminder(\''+r.id+'\')" style="font-size:12px;padding:5px 12px">Șterge</button>'
-        +'</div>';
-    }
+    // Action buttons — 3 checkboxes style
+    var btnScheduled='<button onclick="setReminderStatus(\''+r.id+'\',\'scheduled\')" style="font-size:12px;padding:5px 12px;border-radius:7px;border:1.5px solid '+  (status==='scheduled'?'#16a34a':'#e2e8f0')+';background:'+  (status==='scheduled'?'#dcfce7':'#fff')+';cursor:pointer;font-weight:600;color:'+  (status==='scheduled'?'#16a34a':'#374151')+'">✓ Programat</button>';
+    var btnNoAnswer='<button onclick="setReminderStatus(\''+r.id+'\',\'no_answer\')" style="font-size:12px;padding:5px 12px;border-radius:7px;border:1.5px solid '+  (status==='no_answer'?'#d97706':'#e2e8f0')+';background:'+  (status==='no_answer'?'#fffbeb':'#fff')+';cursor:pointer;font-weight:600;color:'+  (status==='no_answer'?'#d97706':'#374151')+'">📵 Nu răspunde</button>';
+    var btnRefused='<button onclick="setReminderStatus(\''+r.id+'\',\'refused\')" style="font-size:12px;padding:5px 12px;border-radius:7px;border:1.5px solid '+  (status==='refused'?'#dc2626':'#e2e8f0')+';background:'+  (status==='refused'?'#fef2f2':'#fff')+';cursor:pointer;font-weight:600;color:'+  (status==='refused'?'#dc2626':'#374151')+'">✗ Nu dorește</button>';
 
-    return '<div class="rem-card '+cardClass+'">'
-      +'<div style="display:flex;align-items:start;justify-content:space-between;gap:8px;flex-wrap:wrap">'
-      +'<div style="flex:1">'
-      +'<div class="rem-patient">'+esc(pat.name||'—')
-        +(pat.phone?'<span style="font-size:11px;font-weight:400;color:#64748b;margin-left:8px">📞 '+esc(pat.phone)+'</span>':'')
-        +'</div>'
-      +'<div class="rem-type">'+esc(r.type)+'</div>'
-      +(r.note?'<div class="rem-note">'+esc(r.note)+'</div>':'')
-      +(pat.diagnosis?'<div style="font-size:11px;color:#64748b;margin-top:3px">Diagnostic: '+esc(pat.diagnosis)+'</div>':'')
-      +planSummary
-      +'</div>'
-      +'<div style="text-align:right;flex-shrink:0">'
-      +statusLabel
-      +'<div class="rem-date" style="margin-top:4px">📅 '+d.toLocaleDateString('ro-RO',{day:'2-digit',month:'long',year:'numeric'})+'</div>'
-      +'</div>'
-      +'</div>'
-      +actions
-      +'</div>';
+    var actions='<div style="margin-top:10px">';
+    actions+='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">'+btnScheduled+btnNoAnswer+btnRefused+'</div>';
+    actions+='<div style="display:flex;gap:6px;flex-wrap:wrap">';
+    if(status!=='active')
+      actions+='<button class="btn" onclick="setReminderStatus(\''+r.id+'\',\'active\')" style="font-size:11px;padding:4px 10px">↩ Resetează</button>';
+    actions+='<button class="btn" onclick="openReschedule(\''+r.id+'\')" style="font-size:11px;padding:4px 10px">🔄 Reprogramează</button>';
+    actions+='<button class="btn btn-danger" onclick="deleteReminder(\''+r.id+'\')" style="font-size:11px;padding:4px 10px">Șterge</button>';
+    actions+='</div></div>';
+
+    return '<div class="rem-card '+cardClass+'">'      +'<div style="display:flex;align-items:start;justify-content:space-between;gap:8px;flex-wrap:wrap">'      +'<div style="flex:1">'      +'<div class="rem-patient">'+esc(pat.name||'—')        +(pat.phone?'<span style="font-size:11px;font-weight:400;color:#64748b;margin-left:8px">📞 '+esc(pat.phone)+'</span>':'')        +'</div>'      +'<div class="rem-type">'+esc(r.type)+'</div>'      +(r.note?'<div class="rem-note">'+esc(r.note)+'</div>':'')      +(pat.diagnosis?'<div style="font-size:11px;color:#64748b;margin-top:3px">Diagnostic: '+esc(pat.diagnosis)+'</div>':'')      +planSummary      +'</div>'      +'<div style="text-align:right;flex-shrink:0">'      +statusLabel      +'<div class="rem-date" style="margin-top:4px">📅 '+d.toLocaleDateString('ro-RO',{day:'2-digit',month:'long',year:'numeric'})+'</div>'      +timeLabel      +'</div>'      +'</div>'      +actions      +'</div>';
   }).join('');
 }
 
-async function markReminderDone(id){
-  await sb.from('reminders').update({done:true,done_at:new Date().toISOString()}).eq('id',id);
+async function setReminderStatus(id,status){
+  var upd={status:status,done_at:null};
+  if(status==='scheduled'||status==='refused') upd.done_at=new Date().toISOString();
+  await sb.from('reminders').update(upd).eq('id',id);
   await loadReminders();
-  showNotif('✓ Marcat ca contactat!');
+  var msgs={scheduled:'✓ Marcat ca Programat!',no_answer:'📵 Marcat Nu răspunde.',refused:'✗ Marcat Nu dorește să se prezinte.',active:'Reminder resetat la activ.'};
+  showNotif(msgs[status]||'Actualizat.');
 }
 
 async function reopenReminder(id){
-  await sb.from('reminders').update({done:false,done_at:null}).eq('id',id);
-  await loadReminders();
-  showNotif('Reminder redeschis.');
+  await setReminderStatus(id,'active');
+}
+
+async function markReminderDone(id){
+  await setReminderStatus(id,'scheduled');
 }
 
 async function deleteReminder(id){
