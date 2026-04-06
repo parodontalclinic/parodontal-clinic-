@@ -805,6 +805,39 @@ function stTotal(items){return(items||[]).reduce(function(a,i){return a+(i.price
 function grandTotal(){return state.stages.reduce(function(a,s){return a+stTotal(state.stageItems[s.id]||[]);},0);}
 function getPat(id){return state.patients.find(function(p){return p.id===(id||state.selectedPatientId);});}
 
+var ARCH_LABELS={
+  ro:{adult:'Adult',copil:'Copil',superior:'Arcada Superioară',inferior:'Arcada Inferioară',noArch:'Fără arcadă specificată'},
+  ru:{adult:'Взрослый',copil:'Ребёнок',superior:'Верхняя дуга',inferior:'Нижняя дуга',noArch:'Без дуги'},
+  en:{adult:'Adult',copil:'Child',superior:'Upper Arch',inferior:'Lower Arch',noArch:'No arch specified'},
+  it:{adult:'Adulto',copil:'Bambino',superior:'Arcata superiore',inferior:'Arcata inferiore',noArch:'Senza arcata'}
+};
+
+function groupItemsByArch(items){
+  var groups={};
+  (items||[]).forEach(function(it){
+    var pt=it.patient_type||'';
+    var ar=it.arch||'';
+    var key=pt&&ar?pt+'_'+ar:(pt||ar||'none');
+    if(!groups[key]) groups[key]={patient_type:pt,arch:ar,items:[]};
+    groups[key].items.push(it);
+  });
+  // Order: adult_superior, adult_inferior, copil_superior, copil_inferior, none
+  var order=['adult_superior','adult_inferior','copil_superior','copil_inferior','none'];
+  var result=[];
+  order.forEach(function(k){if(groups[k])result.push(groups[k]);});
+  Object.keys(groups).forEach(function(k){if(order.indexOf(k)<0)result.push(groups[k]);});
+  return result;
+}
+
+function archGroupLabel(pt,ar,lang){
+  var L=ARCH_LABELS[lang]||ARCH_LABELS['ro'];
+  if(!pt&&!ar) return L.noArch;
+  var parts=[];
+  if(pt) parts.push(L[pt]||pt);
+  if(ar) parts.push(L[ar]||ar);
+  return parts.join(' — ');
+}
+
 function showNotif(msg,ok){
   var n=document.getElementById('notif');
   n.textContent=msg;n.style.background=ok===false?'#ef4444':'#0c3560';
@@ -857,7 +890,9 @@ function addToCart(){
   var proc=state.procedures.find(function(p){return p.id===procId;});
   if(!proc){showNotif('Selectează o procedură!',false);return;}
   var teeth=selectedTeeth.slice();
-  cart.push({id:Date.now(),proc:proc,teeth:teeth});
+  var patType=(document.getElementById('sel-patient-type')||{}).value||'adult';
+  var arch=(document.getElementById('sel-arch')||{}).value||'';
+  cart.push({id:Date.now(),proc:proc,teeth:teeth,patType:patType,arch:arch});
   clearTeeth();
   document.getElementById('sel-category').value='';
   document.getElementById('sel-procedure').innerHTML='<option value="">— Alege mai întâi categoria —</option>';
@@ -879,20 +914,26 @@ function renderCart(){
   var el=document.getElementById('cart-items');
   var count=document.getElementById('cart-count');
   var total=document.getElementById('cart-total');
-  var btnAll=document.getElementById('btn-add-all');
   count.textContent=cart.length;
   if(!cart.length){
     el.innerHTML='<div class="cart-empty">Nicio procedură adăugată în coș.</div>';
     total.classList.add('hidden');
     return;
   }
+  var archLabels={superior:'Arcada sup.',inferior:'Arcada inf.'};
+  var typeLabels={adult:'Adult',copil:'Copil'};
   var sum=cart.reduce(function(a,c){var qty=c.teeth.length||1;return a+c.proc.price*qty;},0);
   el.innerHTML=cart.map(function(c){
     var qty=c.teeth.length||1;
     var lineTotal=c.proc.price*qty;
+    var archInfo=(c.patType||c.arch)
+      ?'<span style="background:#e0f2fe;color:#0369a1;font-size:10px;padding:1px 6px;border-radius:4px;margin-right:4px">'+(typeLabels[c.patType]||'')+'</span>'
+       +'<span style="background:#f0fdf4;color:#166534;font-size:10px;padding:1px 6px;border-radius:4px">'+(archLabels[c.arch]||'')+'</span>'
+      :'';
     return '<div class="cart-item">'
       +'<div class="cart-item-info">'
       +'<div class="cart-item-name">'+esc(c.proc.name)+'</div>'
+      +'<div style="margin-top:3px">'+archInfo+'</div>'
       +(c.teeth.length
         ?'<div class="cart-item-teeth">Dinți: '+c.teeth.join(', ')+' <span style="color:#0c3560;font-weight:600">(×'+qty+')</span></div>'
         :'<div class="cart-item-teeth" style="color:#f59e0b">Fără dinte specificat</div>')
@@ -915,14 +956,16 @@ async function addAllToplan(){
   state.activeStageId=stageId;
   var added=0;
   for(var c of cart){
+    var patType=c.patType||'adult';
+    var arch=c.arch||'';
     if(c.teeth.length===0){
-      var obj={stage_id:stageId,name:c.proc.name,price:c.proc.price,category:c.proc.category,explanation:''};
+      var obj={stage_id:stageId,name:c.proc.name,price:c.proc.price,category:c.proc.category,explanation:'',patient_type:patType,arch:arch};
       var{data,error}=await sb.from('stage_items').insert([obj]).select().single();
       if(!error){if(!state.stageItems[stageId])state.stageItems[stageId]=[];state.stageItems[stageId].push(data);added++;}
     } else {
       for(var tooth of c.teeth){
         var name=c.proc.name+' (d.'+tooth+')';
-        var obj2={stage_id:stageId,name:name,price:c.proc.price,category:c.proc.category,explanation:''};
+        var obj2={stage_id:stageId,name:name,price:c.proc.price,category:c.proc.category,explanation:'',patient_type:patType,arch:arch};
         var{data:d2,error:e2}=await sb.from('stage_items').insert([obj2]).select().single();
         if(!e2){if(!state.stageItems[stageId])state.stageItems[stageId]=[];state.stageItems[stageId].push(d2);added++;}
       }
@@ -1132,16 +1175,22 @@ function renderTreatment(){
   document.getElementById('stages-editor').innerHTML=state.stages.map(function(stage){
     var items=state.stageItems[stage.id]||[];
     var disc=stage.discount||0;
-    var itemsHtml=items.length?items.map(function(item){
-      var done=!!state.doneItems[item.id];
-      return '<div class="item-row'+(done?' done':'')+'">'
-        +'<div class="item-check'+(done?' checked':'')+'" onclick="toggleDone(\''+item.id+'\')">'
-        +'<svg viewBox="0 0 14 14" fill="none" stroke="#fff" stroke-width="2.5"><polyline points="2,7 6,11 12,3"/></svg>'
-        +'</div>'
-        +'<div class="item-name">'+esc(item.name)+'</div>'
-        +'<div class="item-price">'+fmt(item.price||0)+'</div>'
-        +'<button class="btn btn-danger" onclick="removeItem(\''+stage.id+'\',\''+item.id+'\')" style="padding:4px 10px;font-size:11px">Șterge</button>'
-        +'</div>';
+    var groups=groupItemsByArch(items);
+    var itemsHtml=items.length?groups.map(function(g){
+      var gLabel=archGroupLabel(g.patient_type,g.arch,'ro');
+      var hasGroup=g.patient_type||g.arch;
+      var groupHead=hasGroup?'<div style="font-size:11px;font-weight:600;color:#475569;background:#f1f5f9;padding:4px 10px;border-radius:6px;margin-bottom:4px;margin-top:10px;display:inline-block">'+esc(gLabel)+'</div>':'';
+      return groupHead+g.items.map(function(item){
+        var done=!!state.doneItems[item.id];
+        return '<div class="item-row'+(done?' done':'')+'">'
+          +'<div class="item-check'+(done?' checked':'')+'" onclick="toggleDone(\''+item.id+'\')">'
+          +'<svg viewBox="0 0 14 14" fill="none" stroke="#fff" stroke-width="2.5"><polyline points="2,7 6,11 12,3"/></svg>'
+          +'</div>'
+          +'<div class="item-name">'+esc(item.name)+'</div>'
+          +'<div class="item-price">'+fmt(item.price||0)+'</div>'
+          +'<button class="btn btn-danger" onclick="removeItem(\''+stage.id+'\',\''+item.id+'\')" style="padding:4px 10px;font-size:11px">Șterge</button>'
+          +'</div>';
+      }).join('');
     }).join(''):'<div style="color:#94a3b8;font-size:12px;padding:6px 0">Nicio procedură adăugată.</div>';
     var stTot=stTotal(items);
     var stTotDisc=disc>0?Math.round(stTot*(1-disc/100)):stTot;
@@ -1290,10 +1339,18 @@ function renderPdfPreviewWithLang(lang){
     var stDisc=stage.discount||0;
     var stTot=stTotal(items);
     var stTotDisc=stDisc>0?Math.round(stTot*(1-stDisc/100)):stTot;
+    var pdfGroups=groupItemsByArch(items);
     var rows=!items.length?'<tr><td colspan="3" style="color:#94a3b8;padding:8px;font-style:italic">—</td></tr>'
-      :items.map(function(it){
-        var translatedName=getTranslatedName(it.name,lang);
-        return'<tr><td style="width:28px;text-align:center"><div style="width:16px;height:16px;border:1.5px solid #94a3b8;border-radius:3px;display:inline-block"></div></td><td>'+esc(translatedName)+'</td><td style="text-align:right;font-weight:600;white-space:nowrap">'+fmt(it.price||0)+'</td></tr>';
+      :pdfGroups.map(function(g){
+        var gLabel=archGroupLabel(g.patient_type,g.arch,lang);
+        var hasGroup=g.patient_type||g.arch;
+        var groupRow=hasGroup
+          ?'<tr><td colspan="3" style="background:#f1f5f9;padding:5px 10px;font-size:10px;font-weight:700;color:#475569;letter-spacing:0.3px">'+esc(gLabel)+'</td></tr>'
+          :'';
+        return groupRow+g.items.map(function(it){
+          var translatedName=getTranslatedName(it.name,lang);
+          return'<tr><td style="width:28px;text-align:center"><div style="width:16px;height:16px;border:1.5px solid #94a3b8;border-radius:3px;display:inline-block"></div></td><td>'+esc(translatedName)+'</td><td style="text-align:right;font-weight:600;white-space:nowrap">'+fmt(it.price||0)+'</td></tr>';
+        }).join('');
       }).join('');
     // Stage total box
     var stageTotalBox=stDisc>0
