@@ -132,6 +132,12 @@ tr:last-child td{border-bottom:none}
 .cart-item-price{font-size:13px;font-weight:700;color:#0c3560;white-space:nowrap}
 .cart-empty{text-align:center;color:#94a3b8;font-size:12px;padding:16px;background:#f8fafc;border-radius:8px;border:1px dashed #e2e8f0}
 .cart-total{text-align:right;font-weight:700;font-size:14px;color:#0c3560;padding:10px 0;border-top:1px solid #e2e8f0;margin-top:4px}
+.doc-card{border:1px solid #e2e8f0;border-radius:10px;padding:12px;display:flex;align-items:center;gap:12px;margin-bottom:10px;transition:all 0.15s;background:#fff}
+.doc-card:hover{border-color:#0c3560;background:#f8fafc}
+.doc-thumb{width:56px;height:56px;border-radius:8px;object-fit:cover;flex-shrink:0;cursor:pointer;border:1px solid #e2e8f0}
+.doc-thumb-pdf{width:56px;height:56px;border-radius:8px;background:#fef2f2;display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer;border:1px solid #fecaca}
+.doc-name{font-size:13px;font-weight:600;color:#1e293b;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.doc-meta{font-size:11px;color:#94a3b8;margin-top:2px}
 </style>
 </head>
 <body>
@@ -172,6 +178,9 @@ tr:last-child td{border-bottom:none}
     <button class="sidebar-btn" id="sbtn-procedures" onclick="switchTab('procedures')">
       <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M8 12h8M12 8v8"/></svg>Catalog proceduri
     </button>
+    <button class="sidebar-btn" id="sbtn-documents" onclick="switchTab('documents')">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M9 13h6M9 17h4"/></svg>Acte pacienți
+    </button>
     <div class="sidebar-spacer"></div>
     <div class="sidebar-user">
       <div class="user-email" id="user-email"></div>
@@ -200,10 +209,11 @@ tr:last-child td{border-bottom:none}
     </div>
 
     <div class="tabs-nav">
-      <button class="tab-btn active" id="tab-btn-patients" onclick="switchTab('patients')">Pacienți</button>
+      <button class="tab-btn" id="tab-btn-patients" onclick="switchTab('patients')">Pacienți</button>
       <button class="tab-btn" id="tab-btn-treatment" onclick="switchTab('treatment')">Plan tratament</button>
       <button class="tab-btn" id="tab-btn-pdf" onclick="switchTab('pdf')">Export PDF</button>
       <button class="tab-btn" id="tab-btn-procedures" onclick="switchTab('procedures')">Catalog proceduri</button>
+      <button class="tab-btn" id="tab-btn-documents" onclick="switchTab('documents')">Acte pacienți</button>
     </div>
 
     <!-- PACIENTI -->
@@ -421,6 +431,56 @@ tr:last-child td{border-bottom:none}
         </div>
       </div>
     </div>
+
+    <!-- ACTE PACIENTI -->
+    <div id="tab-documents" class="tab-content">
+      <div class="two-col">
+        <div class="card">
+          <div class="card-title">Încarcă act / document</div>
+          <div class="card-sub">Selectează pacientul și încarcă fișierul</div>
+
+          <label>Pacient</label>
+          <select id="doc-patient-sel" onchange="onDocPatientChange()">
+            <option value="">— Selectează pacient —</option>
+          </select>
+
+          <label>Denumire document</label>
+          <input id="doc-name" placeholder="Ex: Radiografie panoramică, Buletin de identitate...">
+
+          <label>Fișier (imagine sau PDF)</label>
+          <input type="file" id="doc-file" accept="image/*,.pdf" style="padding:6px">
+
+          <div id="doc-preview-wrap" class="hidden" style="margin-top:12px;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;max-height:200px">
+            <img id="doc-img-preview" style="width:100%;object-fit:contain;max-height:200px;display:none">
+            <div id="doc-pdf-preview" style="padding:12px;background:#f8fafc;font-size:13px;color:#64748b;display:none">
+              <svg width="20" height="20" fill="none" stroke="#0c3560" stroke-width="2" viewBox="0 0 24 24" style="vertical-align:middle;margin-right:6px"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>
+              <span id="doc-pdf-name"></span>
+            </div>
+          </div>
+
+          <button class="btn btn-primary btn-full" onclick="uploadDocument()" id="btn-upload-doc" style="margin-top:14px">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            <span id="doc-upload-text">Încarcă document</span>
+          </button>
+          <div id="doc-upload-status" style="font-size:12px;text-align:center;margin-top:8px;min-height:16px"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Documente pacient</div>
+          <div class="card-sub" id="doc-list-patient-name">Selectează un pacient</div>
+          <div id="doc-list"><div class="loading">Selectează un pacient pentru a vedea documentele</div></div>
+        </div>
+      </div>
+
+      <!-- Modal vizualizare -->
+      <div id="doc-modal" class="hidden" style="position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9999;display:flex;align-items:center;justify-content:center" onclick="closeDocModal()">
+        <div style="background:#fff;border-radius:12px;padding:20px;max-width:90vw;max-height:90vh;overflow:auto;position:relative" onclick="event.stopPropagation()">
+          <button onclick="closeDocModal()" style="position:absolute;top:12px;right:12px;background:#f1f5f9;border:none;border-radius:6px;padding:6px 10px;cursor:pointer;font-size:13px">✕ Închide</button>
+          <div id="doc-modal-content" style="margin-top:8px"></div>
+        </div>
+      </div>
+    </div>
+
   </main>
 </div>
 
@@ -909,7 +969,7 @@ async function loadAll(){
     if(e2)throw e2;
     state.patients=patients||[];
     state.procedures=procedures||[];
-    updateStats();renderPatients();renderProcedures();renderPdfPatientSelect();populatePatientSelect();
+    updateStats();renderPatients();renderProcedures();renderPdfPatientSelect();populatePatientSelect();populateDocPatientSelect();
   }catch(e){
     console.error('loadAll error:',e);
     showNotif('Eroare la încărcare: '+e.message,false);
@@ -1288,7 +1348,161 @@ function switchTab(tab){
   var sb2=document.getElementById('sbtn-'+tab);if(sb2)sb2.classList.add('active');
   if(tab==='pdf'){renderPdfPatientSelect();renderPdfPreview();}
   if(tab==='procedures')renderProcedures();
+  if(tab==='documents'){populateDocPatientSelect();}
 }
+
+// ---- DOCUMENTE ----
+function populateDocPatientSelect(){
+  var sel=document.getElementById('doc-patient-sel');
+  if(!sel)return;
+  var cur=sel.value;
+  sel.innerHTML='<option value="">— Selectează pacient —</option>'
+    +state.patients.map(function(p){return'<option value="'+p.id+'">'+esc(p.name)+'</option>';}).join('');
+  if(cur) sel.value=cur;
+}
+
+async function onDocPatientChange(){
+  var id=document.getElementById('doc-patient-sel').value;
+  if(!id)return;
+  var pat=state.patients.find(function(p){return p.id===id;});
+  document.getElementById('doc-list-patient-name').textContent=pat?'Documente pentru: '+pat.name:'Selectează un pacient';
+  await loadDocuments(id);
+}
+
+async function loadDocuments(patientId){
+  document.getElementById('doc-list').innerHTML='<div class="loading">Se încarcă...</div>';
+  var{data,error}=await sb.from('patient_documents').select('*').eq('patient_id',patientId).order('created_at',{ascending:false});
+  if(error){document.getElementById('doc-list').innerHTML='<div style="color:#ef4444;font-size:13px">Eroare: '+error.message+'</div>';return;}
+  renderDocList(data||[]);
+}
+
+function renderDocList(docs){
+  var el=document.getElementById('doc-list');
+  if(!docs.length){el.innerHTML='<div style="color:#94a3b8;font-size:13px;padding:20px;text-align:center">Niciun document încărcat.</div>';return;}
+  el.innerHTML=docs.map(function(doc){
+    var isImg=doc.file_type&&doc.file_type.startsWith('image/');
+    var thumb=isImg
+      ?'<img class="doc-thumb" src="'+esc(doc.file_url)+'" onclick="viewDoc(\''+esc(doc.file_url)+'\',\''+esc(doc.name)+'\',true)">'
+      :'<div class="doc-thumb-pdf" onclick="viewDoc(\''+esc(doc.file_url)+'\',\''+esc(doc.name)+'\',false)">'
+        +'<svg width="24" height="24" fill="none" stroke="#dc2626" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg></div>';
+    var size=doc.file_size?'· '+(doc.file_size/1024).toFixed(0)+' KB':'';
+    var date=new Date(doc.created_at).toLocaleDateString('ro-RO');
+    return '<div class="doc-card">'+thumb
+      +'<div style="flex:1;min-width:0">'
+      +'<div class="doc-name">'+esc(doc.name)+'</div>'
+      +'<div class="doc-meta">'+date+' '+size+'</div>'
+      +'</div>'
+      +'<div style="display:flex;gap:6px">'
+      +'<a href="'+esc(doc.file_url)+'" target="_blank" class="btn" style="padding:4px 10px;font-size:11px">Deschide</a>'
+      +'<button class="btn btn-danger" onclick="deleteDoc(\''+doc.id+'\')" style="padding:4px 10px;font-size:11px">Șterge</button>'
+      +'</div></div>';
+  }).join('');
+}
+
+// Preview file before upload
+document.addEventListener('DOMContentLoaded',function(){
+  var fileInput=document.getElementById('doc-file');
+  if(fileInput) fileInput.addEventListener('change',function(){
+    var file=this.files[0];
+    if(!file)return;
+    var wrap=document.getElementById('doc-preview-wrap');
+    var img=document.getElementById('doc-img-preview');
+    var pdfDiv=document.getElementById('doc-pdf-preview');
+    var pdfName=document.getElementById('doc-pdf-name');
+    wrap.classList.remove('hidden');
+    if(file.type.startsWith('image/')){
+      img.style.display='block';pdfDiv.style.display='none';
+      var reader=new FileReader();
+      reader.onload=function(e){img.src=e.target.result;};
+      reader.readAsDataURL(file);
+    } else {
+      img.style.display='none';pdfDiv.style.display='block';
+      pdfName.textContent=file.name;
+    }
+    // Auto-fill name if empty
+    var nameInput=document.getElementById('doc-name');
+    if(!nameInput.value) nameInput.value=file.name.replace(/\.[^/.]+$/,'');
+  });
+});
+
+async function uploadDocument(){
+  var patId=document.getElementById('doc-patient-sel').value;
+  var name=document.getElementById('doc-name').value.trim();
+  var fileInput=document.getElementById('doc-file');
+  var file=fileInput.files[0];
+  if(!patId){showNotif('Selectează un pacient!',false);return;}
+  if(!name){showNotif('Introdu denumirea documentului!',false);return;}
+  if(!file){showNotif('Selectează un fișier!',false);return;}
+
+  var btn=document.getElementById('btn-upload-doc');
+  var txt=document.getElementById('doc-upload-text');
+  var status=document.getElementById('doc-upload-status');
+  btn.disabled=true;txt.textContent='Se încarcă...';status.textContent='';
+
+  try{
+    // Upload to Supabase Storage
+    var ext=file.name.split('.').pop();
+    var path=patId+'/'+Date.now()+'.'+ext;
+    var{data:upData,error:upErr}=await sb.storage.from('patient-docs').upload(path,file,{upsert:false,contentType:file.type});
+    if(upErr) throw upErr;
+
+    // Get public URL
+    var{data:urlData}=sb.storage.from('patient-docs').getPublicUrl(path);
+    var fileUrl=urlData.publicUrl;
+
+    // Save to DB
+    var{error:dbErr}=await sb.from('patient_documents').insert([{
+      patient_id:patId,name:name,file_url:fileUrl,
+      file_type:file.type,file_size:file.size
+    }]);
+    if(dbErr) throw dbErr;
+
+    // Reset form
+    document.getElementById('doc-name').value='';
+    fileInput.value='';
+    document.getElementById('doc-preview-wrap').classList.add('hidden');
+    document.getElementById('doc-img-preview').style.display='none';
+    document.getElementById('doc-pdf-preview').style.display='none';
+    status.style.color='#16a34a';status.textContent='✓ Document încărcat!';
+    showNotif('✓ Document salvat!');
+    await loadDocuments(patId);
+  }catch(e){
+    status.style.color='#ef4444';status.textContent='Eroare: '+e.message;
+    showNotif('Eroare la încărcare!',false);
+  }
+  btn.disabled=false;txt.textContent='Încarcă document';
+}
+
+async function deleteDoc(docId){
+  if(!confirm('Ștergi acest document?'))return;
+  await sb.from('patient_documents').delete().eq('id',docId);
+  var patId=document.getElementById('doc-patient-sel').value;
+  if(patId) await loadDocuments(patId);
+  showNotif('Document șters.');
+}
+
+function viewDoc(url,name,isImg){
+  var modal=document.getElementById('doc-modal');
+  var content=document.getElementById('doc-modal-content');
+  modal.classList.remove('hidden');
+  modal.style.display='flex';
+  if(isImg){
+    content.innerHTML='<div style="font-size:14px;font-weight:600;color:#0c3560;margin-bottom:10px">'+esc(name)+'</div>'
+      +'<img src="'+esc(url)+'" style="max-width:80vw;max-height:75vh;border-radius:8px;display:block">';
+  } else {
+    content.innerHTML='<div style="font-size:14px;font-weight:600;color:#0c3560;margin-bottom:10px">'+esc(name)+'</div>'
+      +'<iframe src="'+esc(url)+'" style="width:75vw;height:75vh;border:none;border-radius:8px"></iframe>';
+  }
+}
+
+function closeDocModal(){
+  var modal=document.getElementById('doc-modal');
+  modal.classList.add('hidden');
+  modal.style.display='none';
+  document.getElementById('doc-modal-content').innerHTML='';
+}
+
+// ---- END DOCUMENTE ----
 
 // Set login logo
 var loginLogo = document.querySelector('.login-box img');
