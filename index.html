@@ -1361,7 +1361,7 @@ function renderTreatment(){
           +'<svg viewBox="0 0 14 14" fill="none" stroke="#fff" stroke-width="2.5"><polyline points="2,7 6,11 12,3"/></svg>'
           +'</div>'
           +'<div class="item-name"><div>'+esc(item.name)+'</div>'+doneInfo+'</div>'
-          +'<div class="item-price" style="padding-top:2px">'            +(done              ?'<span style="font-size:13px;color:#0c3560;font-weight:600">'+fmt(item.price||0)+'</span>'              :'<input type="number" value="'+(item.price||0)+'" min="0" step="50"'               +' onchange="updateItemPrice(\''+item.id+'\',this.value)"'               +' style="width:90px;text-align:right;font-size:12px;font-weight:600;color:#0c3560;border:1px solid #bae6fd;border-radius:6px;padding:3px 6px;background:#eff6ff;outline:none">'            )+'</div>'          +'<button class="btn btn-danger" onclick="removeItem(\''+stage.id+'\',\''+item.id+'\')" style="padding:4px 10px;font-size:11px;margin-top:2px">Șterge</button>'
+          +'<div class="item-price" style="padding-top:2px">'            +(done              ?'<span style="font-size:13px;color:#0c3560;font-weight:600">'+fmt(item.price||0)+'</span>'              :'<input type="number" value="'+(item.price||0)+'" min="0" step="50"'               +' oninput="previewItemPrice(\''+item.id+'\',this.value)"'               +' onchange="updateItemPrice(\''+item.id+'\',this.value)"'               +' style="width:90px;text-align:right;font-size:12px;font-weight:600;color:#0c3560;border:1px solid #bae6fd;border-radius:6px;padding:3px 6px;background:#eff6ff;outline:none">'            )+'</div>'          +'<button class="btn btn-danger" onclick="removeItem(\''+stage.id+'\',\''+item.id+'\')" style="padding:4px 10px;font-size:11px;margin-top:2px">Șterge</button>'
           +'</div>';
       }).join('');
     }).join(''):'<div style="color:#94a3b8;font-size:12px;padding:6px 0">Nicio procedură adăugată.</div>';
@@ -1369,7 +1369,7 @@ function renderTreatment(){
     var stTotDisc=disc>0?Math.round(stTot*(1-disc/100)):stTot;
     var discOpts='<option value="0"'+(disc===0?' selected':'')+'>Fără reducere</option>';
     for(var d2=1;d2<=20;d2++) discOpts+='<option value="'+d2+'"'+(disc===d2?' selected':'')+'>'+d2+'%</option>';
-    return '<div class="stage-block">'      +'<div class="stage-header">'      +'<div style="font-weight:600;color:#0c3560;font-size:14px">'+esc(stage.name)+'</div>'      +'<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">'      +'<select style="font-size:12px;padding:3px 6px;border-radius:6px;border:1px solid #e2e8f0;color:#0c3560;width:auto;cursor:pointer" onchange="saveStageDiscount(\''+stage.id+'\',this.value)">'+discOpts+'</select>'      +(disc>0        ?'<span style="font-size:12px;color:#94a3b8;text-decoration:line-through">'+fmt(stTot)+'</span>'         +'<span style="background:#dcfce7;color:#16a34a;font-weight:700;font-size:13px;padding:4px 10px;border-radius:8px;border:1px solid #86efac">'+fmt(stTotDisc)+'</span>'        :'<span style="background:#e0f2fe;color:#0369a1;font-weight:700;font-size:13px;padding:4px 10px;border-radius:8px;border:1px solid #bae6fd">'+fmt(stTot)+'</span>')      +'<button class="btn btn-danger" onclick="deleteStage(\''+stage.id+'\')" style="padding:4px 10px;font-size:11px">Șterge etapă</button>'      +'</div></div>'+itemsHtml+'</div>';
+    return '<div class="stage-block">'      +'<div class="stage-header">'      +'<div style="font-weight:600;color:#0c3560;font-size:14px">'+esc(stage.name)+'</div>'      +'<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">'      +'<select style="font-size:12px;padding:3px 6px;border-radius:6px;border:1px solid #e2e8f0;color:#0c3560;width:auto;cursor:pointer" onchange="saveStageDiscount(\''+stage.id+'\',this.value)">'+discOpts+'</select>'      +'<span class="stage-badge-total" data-sid="'+stage.id+'">'      +(disc>0        ?'<span style="font-size:12px;color:#94a3b8;text-decoration:line-through">'+fmt(stTot)+'</span>'         +' <span style="background:#dcfce7;color:#16a34a;font-weight:700;font-size:13px;padding:4px 10px;border-radius:8px;border:1px solid #86efac">'+fmt(stTotDisc)+'</span>'        :'<span style="background:#e0f2fe;color:#0369a1;font-weight:700;font-size:13px;padding:4px 10px;border-radius:8px;border:1px solid #bae6fd">'+fmt(stTot)+'</span>')      +'</span>'      +'<button class="btn btn-danger" onclick="deleteStage(\''+stage.id+'\')" style="padding:4px 10px;font-size:11px">Șterge etapă</button>'      +'</div></div>'+itemsHtml+'</div>';
     }).join('');
   var gt=grandTotal();
   var gtWithDisc=state.stages.reduce(function(a,s){
@@ -1435,6 +1435,62 @@ async function saveDoneBy(itemId,doctor){
     });
   }
   showNotif('✓ Medic salvat: '+(doctor||'—'));
+}
+
+function previewItemPrice(itemId, newPrice){
+  var price=parseInt(newPrice)||0;
+  // Update local state instantly (no DB call)
+  for(var sid in state.stageItems){
+    state.stageItems[sid]=state.stageItems[sid].map(function(it){
+      return it.id===itemId?Object.assign({},it,{price:price}):it;
+    });
+  }
+  // Update stage badge totals in DOM directly
+  state.stages.forEach(function(stage){
+    var items=state.stageItems[stage.id]||[];
+    var disc=stage.discount||0;
+    var stTot=stTotal(items);
+    var stTotDisc=disc>0?Math.round(stTot*(1-disc/100)):stTot;
+    // Find and update stage badge
+    var stageBlock=document.querySelector('[data-stage-id="'+stage.id+'"] .stage-total-badge');
+    // fallback: re-render only totals via updateStats
+  });
+  updateStats();
+  // Update grand total display
+  var gt=grandTotal();
+  var gtWithDisc=state.stages.reduce(function(a,s){
+    var d=s.discount||0;var st=stTotal(state.stageItems[s.id]||[]);
+    return a+Math.round(st*(1-d/100));
+  },0);
+  var hasAnyDisc=state.stages.some(function(s){return (s.discount||0)>0;});
+  var gtEl=document.getElementById('grand-total-editor');
+  if(gtEl){
+    if(hasAnyDisc){
+      gtEl.innerHTML='<div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;padding-top:14px;border-top:1px solid #e2e8f0">'
+        +'<div style="font-size:13px;color:#64748b">Total fără reducere: <span style="font-weight:600;text-decoration:line-through">'+fmt(gt)+'</span></div>'
+        +'<div style="font-size:18px;font-weight:700;color:#16a34a">Total cu reducere: '+fmt(gtWithDisc)+'</div>'
+        +'</div>';
+    } else {
+      gtEl.textContent='Total general: '+fmt(gt);
+    }
+  }
+  // Update per-stage badges
+  document.querySelectorAll('.stage-badge-total').forEach(function(el){
+    var sid=el.getAttribute('data-sid');
+    if(!sid)return;
+    var stage=state.stages.find(function(s){return s.id===sid;});
+    if(!stage)return;
+    var items=state.stageItems[sid]||[];
+    var disc=stage.discount||0;
+    var stTot=stTotal(items);
+    var stTotDisc=disc>0?Math.round(stTot*(1-disc/100)):stTot;
+    if(disc>0){
+      el.innerHTML='<span style="font-size:12px;color:#94a3b8;text-decoration:line-through">'+fmt(stTot)+'</span>'
+        +' <span style="background:#dcfce7;color:#16a34a;font-weight:700;font-size:13px;padding:4px 10px;border-radius:8px;border:1px solid #86efac">'+fmt(stTotDisc)+'</span>';
+    } else {
+      el.innerHTML='<span style="background:#e0f2fe;color:#0369a1;font-weight:700;font-size:13px;padding:4px 10px;border-radius:8px;border:1px solid #bae6fd">'+fmt(stTot)+'</span>';
+    }
+  });
 }
 
 async function updateItemPrice(itemId, newPrice){
