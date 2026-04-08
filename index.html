@@ -1242,11 +1242,29 @@ function renderPatients(){
   document.getElementById('patient-list').innerHTML=list.map(function(p){
     var sel=p.id===state.selectedPatientId?' selected':'';
     return '<div class="patient-card'+sel+'" onclick="selectPatient(\''+p.id+'\')">'
+      +'<div style="display:flex;align-items:start;justify-content:space-between;gap:6px">'
+      +'<div style="flex:1;min-width:0">'
       +'<div style="font-weight:600;font-size:13px;color:#0c3560">'+esc(p.name)+'</div>'
       +'<div style="font-size:12px;color:#64748b;margin-top:2px">'+esc(p.phone||'—')+'</div>'
       +'<div style="font-size:12px;margin-top:8px"><strong>Diagnostic:</strong> '+esc(p.diagnosis||'—')+'</div>'
+      +'</div>'
+      +'<button class="btn btn-danger" onclick="event.stopPropagation();deletePatient(\''+p.id+'\',\''+esc(p.name)+'\')" style="padding:3px 8px;font-size:11px;flex-shrink:0;margin-top:0">✕</button>'
+      +'</div>'
       +'</div>';
   }).join('');
+}
+
+async function deletePatient(id, name){
+  if(!confirm('Ștergi pacientul "'+name+'"?\n\nAceastă acțiune va șterge și toate etapele, procedurile, documentele și reminderele asociate. Nu poate fi anulată!')) return;
+  var{error}=await sb.from('patients').delete().eq('id',id);
+  if(error){showNotif('Eroare: '+error.message,false);return;}
+  state.patients=state.patients.filter(function(p){return p.id!==id;});
+  if(state.selectedPatientId===id){
+    state.selectedPatientId=null;
+    state.stages=[];state.stageItems={};state.doneItems={};state.activeStageId=null;
+  }
+  populatePatientSelect();renderPdfPatientSelect();renderPatients();renderTreatment();updateStats();
+  showNotif('✓ Pacient șters.');
 }
 
 async function selectPatient(id){
