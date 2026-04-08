@@ -200,7 +200,26 @@ tr:last-child td{border-bottom:none}
     <div class="sidebar-spacer"></div>
     <div class="sidebar-user">
       <div class="user-email" id="user-email"></div>
+      <button class="btn-logout" onclick="openChangePassword()" style="margin-bottom:6px;background:rgba(255,255,255,0.08)">🔑 Schimbă parola</button>
       <button class="btn-logout" onclick="doLogout()">Deconectare</button>
+    </div>
+
+    <!-- Modal schimbare parola -->
+    <div id="change-pwd-modal" class="hidden" style="position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center">
+      <div style="background:#fff;border-radius:14px;padding:28px;width:360px;max-width:95vw;box-shadow:0 20px 60px rgba(0,0,0,0.3)">
+        <div style="font-size:17px;font-weight:700;color:#0c3560;margin-bottom:4px">Schimbă parola</div>
+        <div style="font-size:12px;color:#64748b;margin-bottom:20px" id="pwd-modal-email"></div>
+        <label style="display:block;font-size:12px;color:#64748b;margin-bottom:4px;font-weight:500">Parolă nouă</label>
+        <input type="password" id="pwd-new" placeholder="Minim 6 caractere" style="width:100%;border:1px solid #e2e8f0;border-radius:8px;padding:10px;font-size:14px;outline:none;margin-bottom:12px" oninput="checkPwdMatch()">
+        <label style="display:block;font-size:12px;color:#64748b;margin-bottom:4px;font-weight:500">Confirmă parola nouă</label>
+        <input type="password" id="pwd-confirm" placeholder="Repetă parola" style="width:100%;border:1px solid #e2e8f0;border-radius:8px;padding:10px;font-size:14px;outline:none;margin-bottom:8px" oninput="checkPwdMatch()" onkeydown="if(event.key==='Enter')saveNewPassword()">
+        <div id="pwd-match-msg" style="font-size:12px;min-height:18px;margin-bottom:12px"></div>
+        <div style="display:flex;gap:8px">
+          <button id="btn-save-pwd" class="btn btn-primary" onclick="saveNewPassword()" style="flex:1" disabled>Salvează</button>
+          <button class="btn" onclick="closeChangePassword()" style="flex:1">Anulează</button>
+        </div>
+        <div id="pwd-status" style="font-size:12px;text-align:center;margin-top:10px;min-height:16px"></div>
+      </div>
     </div>
   </aside>
 
@@ -2235,6 +2254,56 @@ async function confirmReschedule(){
   showNotif('✓ Reminder reprogramat pentru '+d.toLocaleDateString('ro-RO')+'!');
 }
 // ---- END REMINDERS ----
+
+// ---- SCHIMBARE PAROLA ----
+function openChangePassword(){
+  var modal=document.getElementById('change-pwd-modal');
+  var emailEl=document.getElementById('pwd-modal-email');
+  if(emailEl) emailEl.textContent=state.currentUser?state.currentUser.email:'';
+  document.getElementById('pwd-new').value='';
+  document.getElementById('pwd-confirm').value='';
+  document.getElementById('pwd-match-msg').textContent='';
+  document.getElementById('pwd-status').textContent='';
+  document.getElementById('btn-save-pwd').disabled=true;
+  modal.classList.remove('hidden');modal.style.display='flex';
+}
+
+function closeChangePassword(){
+  var modal=document.getElementById('change-pwd-modal');
+  modal.classList.add('hidden');modal.style.display='none';
+}
+
+function checkPwdMatch(){
+  var p1=document.getElementById('pwd-new').value;
+  var p2=document.getElementById('pwd-confirm').value;
+  var msg=document.getElementById('pwd-match-msg');
+  var btn=document.getElementById('btn-save-pwd');
+  if(!p1){msg.textContent='';btn.disabled=true;return;}
+  if(p1.length<6){msg.style.color='#ef4444';msg.textContent='Parola trebuie să aibă minim 6 caractere.';btn.disabled=true;return;}
+  if(!p2){msg.textContent='';btn.disabled=true;return;}
+  if(p1===p2){msg.style.color='#16a34a';msg.textContent='✓ Parolele coincid.';btn.disabled=false;}
+  else{msg.style.color='#ef4444';msg.textContent='✗ Parolele nu coincid.';btn.disabled=true;}
+}
+
+async function saveNewPassword(){
+  var pwd=document.getElementById('pwd-new').value;
+  var status=document.getElementById('pwd-status');
+  var btn=document.getElementById('btn-save-pwd');
+  if(pwd.length<6) return;
+  btn.disabled=true;btn.textContent='Se salvează...';
+  status.textContent='';
+  var{error}=await sb.auth.updateUser({password:pwd});
+  if(error){
+    status.style.color='#ef4444';status.textContent='Eroare: '+error.message;
+    btn.disabled=false;btn.textContent='Salvează';
+  } else {
+    status.style.color='#16a34a';status.textContent='✓ Parola a fost schimbată cu succes!';
+    btn.textContent='Salvează';
+    setTimeout(closeChangePassword,1500);
+    showNotif('✓ Parola schimbată cu succes!');
+  }
+}
+// ---- END SCHIMBARE PAROLA ----
 
 // Set login logo
 var loginLogo = document.querySelector('.login-box img');
