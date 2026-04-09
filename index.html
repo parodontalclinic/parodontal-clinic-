@@ -460,6 +460,16 @@ tr:last-child td{border-bottom:none}
 
           <hr style="border:none;border-top:1px solid #e2e8f0;margin:16px 0">
 
+          <!-- Tip export -->
+          <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px;margin-bottom:12px">
+            <div style="font-weight:600;font-size:13px;color:#0c3560;margin-bottom:10px">Tip export</div>
+            <div style="display:flex;gap:6px">
+              <button id="btn-type-clinic" onclick="setPdfType('clinic')" style="flex:1;padding:8px;border-radius:8px;border:2px solid #0c3560;background:#0c3560;color:#fff;font-size:12px;font-weight:600;cursor:pointer">🏥 Clinică</button>
+              <button id="btn-type-patient" onclick="setPdfType('patient')" style="flex:1;padding:8px;border-radius:8px;border:2px solid #e2e8f0;background:#fff;color:#64748b;font-size:12px;font-weight:600;cursor:pointer">👤 Pacient</button>
+            </div>
+            <div style="font-size:11px;color:#64748b;margin-top:8px" id="pdf-type-desc">Format complet cu toate detaliile.</div>
+          </div>
+
           <button class="btn btn-primary btn-full" onclick="printPdf()">
             <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>Descarcă / Printează PDF
           </button>
@@ -1614,7 +1624,8 @@ async function deleteProc(id){
 
 function renderPdfPreview(){
   var lang=document.getElementById('pdf-lang')?document.getElementById('pdf-lang').value:'ro';
-  renderPdfPreviewWithLang(lang);
+  if(pdfType==='patient') renderPdfPreviewPatient(lang);
+  else renderPdfPreviewWithLang(lang);
 }
 
 function getTranslatedName(name, lang){
@@ -1706,20 +1717,127 @@ function renderPdfPreviewWithLang(lang){
   document.getElementById('pdf-preview').innerHTML=html;
 }
 
+function renderPdfPreviewPatient(lang){
+  var patId=state.pdfPatientId||state.selectedPatientId;
+  var pat=getPat(patId);
+  var t=labels[lang]||labels['ro'];
+  var clinicName=(document.getElementById('clinic-name')||{}).value||'Parodontal Clinic';
+  var phone=(document.getElementById('clinic-phone')||{}).value||'';
+  var addr=(document.getElementById('clinic-address')||{}).value||'';
+  var doctor=(document.getElementById('clinic-doctor')||{}).value||(document.getElementById('sel-doctor')||{}).value||'';
+  var today=new Date().toLocaleDateString('ro-RO');
+  if(!patId||!state.stages.length){
+    document.getElementById('pdf-preview').innerHTML='<div class="loading">Selectează un pacient cu plan de tratament</div>';
+    return;
+  }
+  // Group all items by stage, merge same procedure+price
+  var gt=grandTotal();
+  var gtWithDisc=state.stages.reduce(function(a,s){
+    var d=s.discount||0;var st=stTotal(state.stageItems[s.id]||[]);
+    return a+Math.round(st*(1-d/100));
+  },0);
+  var hasAnyDisc=state.stages.some(function(s){return (s.discount||0)>0;});
+
+  var stagesHtml=state.stages.map(function(stage,idx){
+    var items=state.stageItems[stage.id]||[];
+    var disc=stage.discount||0;
+    var stTot=stTotal(items);
+    var stTotDisc=disc>0?Math.round(stTot*(1-disc/100)):stTot;
+    if(!items.length) return '';
+
+    // Group same procedure name+price together, collect teeth
+    var groups={};
+    var order=[];
+    items.forEach(function(it){
+      var translated=getTranslatedName(it.name,lang);
+      // strip tooth suffix to group: "Obturatie (d.16)" → "Obturatie"
+      var base=translated.replace(/\s*\(d\.\d+\)$/,'');
+      var tooth=it.name.match(/\(d\.(\d+)\)$/);
+      var toothNum=tooth?tooth[1]:'';
+      var key=base+'__'+it.price;
+      if(!groups[key]){groups[key]={base:base,price:it.price,teeth:[]};order.push(key);}
+      if(toothNum) groups[key].teeth.push(toothNum);
+    });
+
+    var lines=order.map(function(key,i){
+      var g=groups[key];
+      var qty=g.teeth.length||1;
+      var total=g.price*qty;
+      var teethStr=g.teeth.length?'D'+g.teeth.join(', '):'';
+      var priceStr=qty>1?qty+'×'+g.price+' = '+total:String(total);
+      return '<div style="padding:5px 0;border-bottom:1px solid #f1f5f9;display:flex;gap:8px;align-items:baseline">'
+        +'<span style="color:#64748b;font-size:12px;min-width:20px">'+(i+1)+'.</span>'
+        +'<span style="flex:1;font-size:13px"><u>'+esc(g.base)+'</u>'
+        +(teethStr?' <span style="font-size:12px;color:#475569">'+esc(teethStr)+'</span>':'')
+        +'</span>'
+        +'<span style="font-size:13px;font-weight:600;color:#0c3560;white-space:nowrap">'+priceStr+' MDL</span>'
+        +'</div>';
+    }).join('');
+
+    var stageTotal='<div style="text-align:right;padding:8px 0 0;font-size:13px;font-weight:700;color:#0c3560">'
+      +(disc>0
+        ?'<span style="text-decoration:line-through;color:#94a3b8;font-weight:400;margin-right:8px">'+stTot+' MDL</span>'
+         +'<span style="background:#dc2626;color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:999px;margin-right:6px">-'+disc+'%</span>'
+         +t.stageTotal+': '+stTotDisc+' MDL'
+        :t.stageTotal+': '+stTot+' MDL')
+      +'</div>';
+
+    return '<div style="margin-bottom:20px">'
+      +'<div style="font-weight:700;font-size:14px;color:#0c3560;margin-bottom:8px;padding-bottom:4px;border-bottom:2px solid #0c3560">'+t.stage+' '+(idx+1)+': '+esc(stage.name)+'</div>'
+      +lines
+      +stageTotal
+      +'</div>';
+  }).join('');
+
+  var grandTotalHtml='<div style="margin-top:16px;padding:12px 16px;background:#0c3560;border-radius:8px;display:flex;justify-content:space-between;align-items:center">'
+    +'<span style="color:#fff;font-weight:700;font-size:15px">'+t.grandTotal+'</span>'
+    +(hasAnyDisc
+      ?'<span style="color:#fff"><span style="text-decoration:line-through;opacity:0.6;margin-right:10px">'+gt+' MDL</span><span style="font-size:18px;font-weight:700">'+gtWithDisc+' MDL</span></span>'
+      :'<span style="color:#fff;font-size:18px;font-weight:700">'+gt+' MDL</span>')
+    +'</div>';
+
+  var html='<div style="font-family:serif;padding:20px;background:#fff;border:1px solid #e2e8f0;border-radius:12px">'
+    +'<div style="text-align:center;margin-bottom:20px;padding-bottom:16px;border-bottom:2px solid #0c3560">'
+    +'<img src="'+LOGO_B64+'" style="height:60px;object-fit:contain;margin-bottom:8px;display:block;margin-left:auto;margin-right:auto">'
+    +'<div style="font-size:11px;color:#64748b">'+esc(phone)+(addr?' · '+esc(addr):'')+'</div>'
+    +'</div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px;margin-bottom:16px;padding:10px;background:#f8fafc;border-radius:8px">'
+    +'<div><strong>'+t.patient+':</strong> '+esc(pat?pat.name:'—')+'</div>'
+    +'<div><strong>'+t.doctor+':</strong> '+esc(doctor||'Dr. ______________')+'</div>'
+    +(pat&&pat.diagnosis?'<div style="grid-column:span 2"><strong>Diagnostic:</strong> '+esc(pat.diagnosis)+'</div>':'')
+    +'<div><strong>'+t.date+':</strong> '+today+'</div>'
+    +'</div>'
+    +stagesHtml
+    +grandTotalHtml
+    +'<div style="margin-top:16px;padding:10px;background:#f0fdf4;border-radius:8px;font-size:12px;border:1px solid #bbf7d0"><strong>'+t.recommendations+':</strong> '+t.rec+'</div>'
+    +'<div style="margin-top:20px;display:grid;grid-template-columns:1fr 1fr;gap:20px;font-size:12px;color:#64748b">'
+    +'<div style="border-top:1px solid #e2e8f0;padding-top:8px">Semnătura medicului</div>'
+    +'<div style="border-top:1px solid #e2e8f0;padding-top:8px">Semnătura pacientului</div></div>'
+    +'</div>';
+
+  document.getElementById('pdf-preview').innerHTML=html;
+}
+
 function printPdf(){
   var prev=document.getElementById('pdf-preview');
   if(!prev||prev.querySelector('.loading')){showNotif('Selectează mai întâi un pacient cu plan!',false);return;}
   var pat=getPat(state.pdfPatientId||state.selectedPatientId);
   var w=window.open('','_blank');
   w.document.write('<!DOCTYPE html><html><head><title>Plan - '+(pat?pat.name:'Pacient')+'</title><style>');
-  w.document.write('*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;font-size:12px;padding:20px;color:#1e293b}');
-  w.document.write('table{width:100%;border-collapse:collapse}th{background:#f1f5f9;padding:6px 8px;text-align:left;font-size:11px;font-weight:600}td{padding:6px 8px;border-top:1px solid #f1f5f9;vertical-align:middle}');
-  w.document.write('.check-box{width:16px;height:16px;border:1.5px solid #94a3b8;border-radius:3px;display:inline-block}');
-  w.document.write('.pdf-page{border:1px solid #e2e8f0;border-radius:8px;padding:20px;margin-bottom:20px;page-break-after:always}');
-  w.document.write('.pdf-header{display:flex;align-items:center;gap:14px;padding-bottom:14px;border-bottom:1px solid #e2e8f0;margin-bottom:14px}');
-  w.document.write('.pdf-logo-box img{height:40px;object-fit:contain}');
-  w.document.write('.pdf-clinic-name{font-size:15px;font-weight:700;color:#0c3560}');
-  w.document.write('@media print{body{padding:10px}.pdf-page{page-break-after:always;border:none}}');
+  w.document.write('*{box-sizing:border-box;margin:0;padding:0}');
+  if(pdfType==='patient'){
+    w.document.write('body{font-family:Georgia,serif;font-size:13px;padding:24px;color:#1e293b;max-width:700px;margin:0 auto}');
+    w.document.write('u{text-decoration:underline}');
+    w.document.write('@media print{body{padding:16px}}');
+  } else {
+    w.document.write('body{font-family:Arial,sans-serif;font-size:12px;padding:20px;color:#1e293b}');
+    w.document.write('table{width:100%;border-collapse:collapse}th{background:#f1f5f9;padding:6px 8px;text-align:left;font-size:11px;font-weight:600}td{padding:6px 8px;border-top:1px solid #f1f5f9;vertical-align:middle}');
+    w.document.write('.check-box{width:16px;height:16px;border:1.5px solid #94a3b8;border-radius:3px;display:inline-block}');
+    w.document.write('.pdf-page{border:1px solid #e2e8f0;border-radius:8px;padding:20px;margin-bottom:20px;page-break-after:always}');
+    w.document.write('.pdf-header{display:flex;align-items:center;gap:14px;padding-bottom:14px;border-bottom:1px solid #e2e8f0;margin-bottom:14px}');
+    w.document.write('.pdf-clinic-name{font-size:15px;font-weight:700;color:#0c3560}');
+    w.document.write('@media print{body{padding:10px}.pdf-page{page-break-after:always;border:none}}');
+  }
   w.document.write('</style></head><body>');
   w.document.write(prev.innerHTML);
   w.document.write('</body></html>');
@@ -2045,6 +2163,26 @@ function printReceipt(){
 // ---- REMINDERS ----
 var state_reminders=[];
 var rem_filter='all';
+var pdfType='clinic'; // 'clinic' or 'patient'
+
+function setPdfType(type){
+  pdfType=type;
+  var btnC=document.getElementById('btn-type-clinic');
+  var btnP=document.getElementById('btn-type-patient');
+  var desc=document.getElementById('pdf-type-desc');
+  if(btnC&&btnP){
+    if(type==='clinic'){
+      btnC.style.background='#0c3560';btnC.style.color='#fff';btnC.style.borderColor='#0c3560';
+      btnP.style.background='#fff';btnP.style.color='#64748b';btnP.style.borderColor='#e2e8f0';
+      if(desc) desc.textContent='Format complet cu toate detaliile.';
+    } else {
+      btnP.style.background='#0c3560';btnP.style.color='#fff';btnP.style.borderColor='#0c3560';
+      btnC.style.background='#fff';btnC.style.color='#64748b';btnC.style.borderColor='#e2e8f0';
+      if(desc) desc.textContent='Format succint — deviz pentru pacient.';
+    }
+  }
+  renderPdfPreview();
+}
 
 function populateReminderPatientSelect(){
   var sel=document.getElementById('rem-patient-sel');
