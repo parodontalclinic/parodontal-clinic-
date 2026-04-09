@@ -1738,19 +1738,11 @@ function renderPdfPreviewPatient(lang){
   },0);
   var hasAnyDisc=state.stages.some(function(s){return (s.discount||0)>0;});
 
-  var stagesHtml=state.stages.map(function(stage,idx){
-    var items=state.stageItems[stage.id]||[];
-    var disc=stage.discount||0;
-    var stTot=stTotal(items);
-    var stTotDisc=disc>0?Math.round(stTot*(1-disc/100)):stTot;
-    if(!items.length) return '';
-
-    // Group same procedure name+price together, collect teeth
-    var groups={};
-    var order=[];
+  // Helper: group items by name+price, collect teeth
+  function groupProcedures(items){
+    var groups={};var order=[];
     items.forEach(function(it){
       var translated=getTranslatedName(it.name,lang);
-      // strip tooth suffix to group: "Obturatie (d.16)" → "Obturatie"
       var base=translated.replace(/\s*\(d\.\d+\)$/,'');
       var tooth=it.name.match(/\(d\.(\d+)\)$/);
       var toothNum=tooth?tooth[1]:'';
@@ -1758,20 +1750,44 @@ function renderPdfPreviewPatient(lang){
       if(!groups[key]){groups[key]={base:base,price:it.price,teeth:[]};order.push(key);}
       if(toothNum) groups[key].teeth.push(toothNum);
     });
+    return order.map(function(k){return groups[k];});
+  }
 
-    var lines=order.map(function(key,i){
-      var g=groups[key];
+  function renderProcLines(procs, startIdx){
+    return procs.map(function(g,i){
       var qty=g.teeth.length||1;
       var total=g.price*qty;
       var teethStr=g.teeth.length?'D'+g.teeth.join(', '):'';
       var priceStr=qty>1?qty+'×'+g.price+' = '+total:String(total);
-      return '<div style="padding:5px 0;border-bottom:1px solid #f1f5f9;display:flex;gap:8px;align-items:baseline">'
-        +'<span style="color:#64748b;font-size:12px;min-width:20px">'+(i+1)+'.</span>'
+      return '<div style="padding:4px 0;border-bottom:1px solid #f1f5f9;display:flex;gap:8px;align-items:baseline">'
+        +'<span style="color:#94a3b8;font-size:11px;min-width:20px">'+(startIdx+i+1)+'.</span>'
         +'<span style="flex:1;font-size:13px"><u>'+esc(g.base)+'</u>'
         +(teethStr?' <span style="font-size:12px;color:#475569">'+esc(teethStr)+'</span>':'')
         +'</span>'
         +'<span style="font-size:13px;font-weight:600;color:#0c3560;white-space:nowrap">'+priceStr+' MDL</span>'
         +'</div>';
+    }).join('');
+  }
+
+  var stagesHtml=state.stages.map(function(stage,idx){
+    var items=state.stageItems[stage.id]||[];
+    var disc=stage.discount||0;
+    var stTot=stTotal(items);
+    var stTotDisc=disc>0?Math.round(stTot*(1-disc/100)):stTot;
+    if(!items.length) return '';
+
+    // Group by arch first, then group procedures within each arch
+    var archGroups=groupItemsByArch(items);
+    var lineCounter=0;
+    var linesHtml=archGroups.map(function(ag){
+      var hasArch=ag.patient_type||ag.arch;
+      var archHead=hasArch
+        ?'<div style="font-size:11px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:0.5px;margin:10px 0 4px;padding-left:4px;border-left:3px solid #0c3560">'+esc(archGroupLabel(ag.patient_type,ag.arch,lang))+'</div>'
+        :'';
+      var procs=groupProcedures(ag.items);
+      var rows=renderProcLines(procs,lineCounter);
+      lineCounter+=procs.length;
+      return archHead+rows;
     }).join('');
 
     var stageTotal='<div style="text-align:right;padding:8px 0 0;font-size:13px;font-weight:700;color:#0c3560">'
@@ -1784,7 +1800,7 @@ function renderPdfPreviewPatient(lang){
 
     return '<div style="margin-bottom:20px">'
       +'<div style="font-weight:700;font-size:14px;color:#0c3560;margin-bottom:8px;padding-bottom:4px;border-bottom:2px solid #0c3560">'+t.stage+' '+(idx+1)+': '+esc(stage.name)+'</div>'
-      +lines
+      +linesHtml
       +stageTotal
       +'</div>';
   }).join('');
