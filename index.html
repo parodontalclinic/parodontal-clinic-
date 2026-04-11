@@ -2061,7 +2061,7 @@ async function generateReceipt(){
   for(var s of (stages||[])){
     var{data:items}=await sb.from('stage_items').select('*').eq('stage_id',s.id).order('done_at');
     (items||[]).forEach(function(it){
-      if(it.done&&it.done_at) allDoneItems.push(Object.assign({},it,{_stageName:s.name}));
+      if(it.done&&it.done_at) allDoneItems.push(Object.assign({},it,{_stageName:s.name,_stageDiscount:s.discount||0}));
     });
   }
 
@@ -2089,17 +2089,27 @@ async function generateReceipt(){
   el.innerHTML=sessionOrder.map(function(key){
     var sess=sessions[key];
     var dateStr=sess.date.toLocaleString('ro-RO',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
-    var total=sess.items.reduce(function(a,it){return a+(it.price||0);},0);
+    var totalBrut=sess.items.reduce(function(a,it){return a+(it.price||0);},0);
+    var total=sess.items.reduce(function(a,it){
+      var d=it._stageDiscount||0;
+      return a+Math.round((it.price||0)*(1-d/100));
+    },0);
+    var hasDisc=sess.items.some(function(it){return (it._stageDiscount||0)>0;});
     var paidSum=sess.items.reduce(function(a,it){return a+(it.paid_amount||0);},0);
-    // Determine session payment status from items
     var sessStatus=sess.items[0]?sess.items[0].payment_status||'unpaid':'unpaid';
     var debt=total-paidSum;
 
     var rows=sess.items.map(function(it){
+      var d=it._stageDiscount||0;
+      var priceDisc=Math.round((it.price||0)*(1-d/100));
+      var priceHtml=d>0
+        ?'<span style="font-size:11px;color:#94a3b8;text-decoration:line-through;margin-right:4px">'+fmt(it.price||0)+'</span>'
+         +'<span style="font-weight:700;color:#16a34a;white-space:nowrap">'+fmt(priceDisc)+'</span>'
+        :'<span style="font-weight:600;color:#0c3560;white-space:nowrap">'+fmt(it.price||0)+'</span>';
       return '<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid #f1f5f9;font-size:12px">'
         +'<span style="flex:1">'+esc(it.name)+'</span>'
         +(it.done_by?'<span style="font-size:10px;color:#0c3560;background:#e0f2fe;padding:1px 6px;border-radius:4px;flex-shrink:0">'+esc(it.done_by)+'</span>':'')
-        +'<span style="font-weight:600;color:#0c3560;white-space:nowrap;flex-shrink:0">'+fmt(it.price||0)+'</span>'
+        +'<span style="flex-shrink:0">'+priceHtml+'</span>'
         +'</div>';
     }).join('');
 
@@ -2118,12 +2128,16 @@ async function generateReceipt(){
     }
 
     // Payment summary line
-    var paymentSummary='<div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px;padding-top:8px;border-top:1px solid #e2e8f0;flex-wrap:wrap;gap:6px">'
-      +'<div style="font-size:13px;font-weight:700;color:#0c3560">Total bon: '+fmt(total)+'</div>'
+    var paymentSummary='<div style="margin-top:8px;padding-top:8px;border-top:1px solid #e2e8f0">'
+      +(hasDisc?'<div style="font-size:11px;color:#94a3b8;text-decoration:line-through;text-align:right;margin-bottom:2px">Fără reducere: '+fmt(totalBrut)+'</div>':'')
+      +'<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px">'
+      +'<div style="font-size:13px;font-weight:700;color:#0c3560">Total bon'+(hasDisc?' <span style="font-size:10px;background:#dcfce7;color:#16a34a;padding:1px 6px;border-radius:4px;font-weight:700">cu reducere</span>':'')+':</div>'
+      +'<div style="font-size:15px;font-weight:700;color:#0c3560">'+fmt(total)+'</div>'
+      +'</div>'
       +(sessStatus==='partial'
-        ?'<div style="font-size:12px;color:#d97706">Achitat: '+fmt(paidSum)+' · <span style="color:#dc2626;font-weight:700">Datorie: '+fmt(debt)+'</span></div>'
-        :sessStatus==='paid'?'<div style="font-size:12px;color:#16a34a;font-weight:600">Achitat integral</div>'
-        :'<div style="font-size:12px;color:#dc2626;font-weight:700">Datorie: '+fmt(total)+'</div>')
+        ?'<div style="font-size:12px;color:#d97706;margin-top:4px">Achitat: '+fmt(paidSum)+' · <span style="color:#dc2626;font-weight:700">Datorie: '+fmt(debt)+'</span></div>'
+        :sessStatus==='paid'?'<div style="font-size:12px;color:#16a34a;font-weight:600;margin-top:4px">Achitat integral</div>'
+        :'<div style="font-size:12px;color:#dc2626;font-weight:700;margin-top:4px">Datorie: '+fmt(total)+'</div>')
       +'</div>';
 
     // Payment controls
@@ -2136,7 +2150,7 @@ async function generateReceipt(){
       +'</div>'
       +(sessStatus==='partial'
         ?'<div style="display:flex;align-items:center;gap:8px">'
-          +'<input type="number" id="partial-input-'+key.replace(/[^0-9]/g,'')+'" value="'+paidSum+'" min="0" max="'+total+'" placeholder="Suma achitată..." style="flex:1;border:1px solid #e2e8f0;border-radius:6px;padding:5px 8px;font-size:12px;outline:none">'
+          +'<input type="number" id="partial-input-'+key.replace(/[^0-9]/g,'')+'" '+(paidSum>0?'value="'+paidSum+'"':'')+' min="0" max="'+total+'" placeholder="Suma achitată (MDL)..." style="flex:1;border:1px solid #e2e8f0;border-radius:6px;padding:5px 8px;font-size:12px;outline:none">'
           +'<button onclick="savePartialPayment(\''+key+'\','+total+')" style="font-size:11px;padding:5px 12px;border-radius:6px;border:1px solid #0c3560;background:#0c3560;color:#fff;cursor:pointer;font-weight:600">Salvează</button>'
           +'</div>'
         :'')
@@ -2175,7 +2189,12 @@ async function setSessionPayment(sessionKey, status, amount){
   }
   function sessKey(dt){var d=new Date(dt);var m=d.getMinutes()<30?0:30;return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate()+' '+d.getHours()+':'+m;}
   var sessItems=allItems.filter(function(it){return sessKey(it.done_at)===sessionKey;});
-  var total=sessItems.reduce(function(a,it){return a+(it.price||0);},0);
+  // Find discount for each item's stage
+  var total=sessItems.reduce(function(a,it){
+    var stage=(stages||[]).find(function(s){return s.id===it.stage_id;});
+    var d=stage?stage.discount||0:0;
+    return a+Math.round((it.price||0)*(1-d/100));
+  },0);
   var paid=status==='paid'?total:status==='unpaid'?0:(amount||0);
   for(var it of sessItems){
     await sb.from('stage_items').update({payment_status:status,paid_amount:paid}).eq('id',it.id);
