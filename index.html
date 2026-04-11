@@ -2150,7 +2150,7 @@ async function generateReceipt(){
       +'</div>'
       +(sessStatus==='partial'
         ?'<div style="display:flex;align-items:center;gap:8px">'
-          +'<input type="number" id="partial-input-'+key.replace(/[^0-9]/g,'')+'" '+(paidSum>0?'value="'+paidSum+'"':'')+' min="0" max="'+total+'" placeholder="Suma achitată (MDL)..." style="flex:1;border:1px solid #e2e8f0;border-radius:6px;padding:5px 8px;font-size:12px;outline:none">'
+          +'<input type="number" id="partial-input-'+key.replace(/[^0-9]/g,'')+'" min="0" max="'+total+'" placeholder="Suma achitată (MDL)..." style="flex:1;border:1px solid #e2e8f0;border-radius:6px;padding:5px 8px;font-size:12px;outline:none">'
           +'<button onclick="savePartialPayment(\''+key+'\','+total+')" style="font-size:11px;padding:5px 12px;border-radius:6px;border:1px solid #0c3560;background:#0c3560;color:#fff;cursor:pointer;font-weight:600">Salvează</button>'
           +'</div>'
         :'')
@@ -2174,6 +2174,13 @@ async function generateReceipt(){
       +paymentControls
       +'</div>';
   }).join('');
+  // Set paid amounts via JS after render to avoid concatenation bug
+  sessionOrder.forEach(function(key){
+    var sess=sessions[key];
+    var paidSum=sess.items.reduce(function(a,it){return a+(it.paid_amount||0);},0);
+    var inputEl=document.getElementById('partial-input-'+key.replace(/[^0-9]/g,''));
+    if(inputEl&&paidSum>0) inputEl.value=paidSum;
+  });
 }
 
 async function setSessionPayment(sessionKey, status, amount){
