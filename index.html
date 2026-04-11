@@ -1186,6 +1186,42 @@ function showApp(){
   if(tbLogo) tbLogo.src=LOGO_B64;
   buildTeethGrid();
   loadAll();
+  startRealtimeSync();
+}
+
+function startRealtimeSync(){
+  // Listen for stage_items changes (bifări) from any user
+  sb.channel('stage_items_changes')
+    .on('postgres_changes',{
+      event:'UPDATE',
+      schema:'public',
+      table:'stage_items'
+    }, function(payload){
+      var updated=payload.new;
+      if(!updated) return;
+      // Update local state
+      var changed=false;
+      for(var sid in state.stageItems){
+        state.stageItems[sid]=state.stageItems[sid].map(function(it){
+          if(it.id===updated.id){
+            changed=true;
+            if(updated.done) state.doneItems[it.id]=updated.done_at||true;
+            else delete state.doneItems[it.id];
+            return Object.assign({},it,updated);
+          }
+          return it;
+        });
+      }
+      if(changed){
+        // Re-render plan if visible
+        var treatmentTab=document.getElementById('tab-treatment');
+        if(treatmentTab&&treatmentTab.classList.contains('active')) renderTreatment();
+        // Re-generate bon if visible
+        var receiptTab=document.getElementById('tab-receipt');
+        if(receiptTab&&receiptTab.classList.contains('active')) generateReceipt();
+      }
+    })
+    .subscribe();
 }
 
 // ---- DATA ----
