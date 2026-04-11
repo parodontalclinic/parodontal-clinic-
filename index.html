@@ -2086,7 +2086,9 @@ async function generateReceipt(){
   // Calculate payment status per session from items
   // payment_status per session stored as a virtual sum: sum of paid_amount vs total
   var bonNr=sessionOrder.length;
+  var bonIndex=0;
   el.innerHTML=sessionOrder.map(function(key){
+    var bIdx=bonIndex++;
     var sess=sessions[key];
     var dateStr=sess.date.toLocaleString('ro-RO',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
     var totalBrut=sess.items.reduce(function(a,it){return a+(it.price||0);},0);
@@ -2150,8 +2152,8 @@ async function generateReceipt(){
       +'</div>'
       +(sessStatus==='partial'
         ?'<div style="display:flex;align-items:center;gap:8px">'
-          +'<input type="text" inputmode="numeric" id="partial-input-'+key.replace(/[^0-9]/g,'')+'" placeholder="Suma achitată (MDL)..." style="flex:1;border:1px solid #e2e8f0;border-radius:6px;padding:5px 8px;font-size:12px;outline:none">'
-          +'<button onclick="savePartialPayment(\''+key+'\','+total+')" style="font-size:11px;padding:5px 12px;border-radius:6px;border:1px solid #0c3560;background:#0c3560;color:#fff;cursor:pointer;font-weight:600">Salvează</button>'
+          +'<input type="text" inputmode="numeric" id="partial-input-'+bIdx+'" placeholder="Suma achitată (MDL)..." style="flex:1;border:1px solid #e2e8f0;border-radius:6px;padding:5px 8px;font-size:12px;outline:none">'
+          +'<button onclick="savePartialPayment(\''+key+'\','+total+','+bIdx+')" style="font-size:11px;padding:5px 12px;border-radius:6px;border:1px solid #0c3560;background:#0c3560;color:#fff;cursor:pointer;font-weight:600">Salvează</button>'
           +'</div>'
         :'')
       +'</div>';
@@ -2175,11 +2177,11 @@ async function generateReceipt(){
       +'</div>';
   }).join('');
   // Set paid amounts via JS after render to avoid concatenation bug
-  sessionOrder.forEach(function(key){
+  sessionOrder.forEach(function(key,idx){
     var sess=sessions[key];
-    var paidSum=sess.items.reduce(function(a,it){return a+(it.paid_amount||0);},0);
-    var inputEl=document.getElementById('partial-input-'+key.replace(/[^0-9]/g,''));
-    if(inputEl&&paidSum>0){ inputEl.value=String(parseInt(paidSum,10)||0); }
+    var paidSum=sess.items.reduce(function(a,it){return a+(parseInt(it.paid_amount,10)||0);},0);
+    var inputEl=document.getElementById('partial-input-'+idx);
+    if(inputEl&&paidSum>0){ inputEl.value=String(paidSum); }
   });
 }
 
@@ -2210,8 +2212,8 @@ async function setSessionPayment(sessionKey, status, amount){
   await generateReceipt();
 }
 
-async function savePartialPayment(sessionKey, total){
-  var inputId='partial-input-'+sessionKey.replace(/[^0-9]/g,'');
+async function savePartialPayment(sessionKey, total, idx){
+  var inputId='partial-input-'+idx;
   var input=document.getElementById(inputId);
   if(!input){showNotif('Eroare!',false);return;}
   var amount=parseInt(String(input.value).replace(/[^0-9]/g,''),10)||0;
