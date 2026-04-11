@@ -2097,7 +2097,8 @@ async function generateReceipt(){
       return a+Math.round((it.price||0)*(1-d/100));
     },0);
     var hasDisc=sess.items.some(function(it){return (it._stageDiscount||0)>0;});
-    var paidSum=sess.items.reduce(function(a,it){return a+(parseInt(it.paid_amount,10)||0);},0);
+    // paid_amount stored only on first item to avoid multiplication
+    var paidSum=parseInt(sess.items[0]&&sess.items[0].paid_amount||0,10);
     var sessStatus=sess.items[0]?sess.items[0].payment_status||'unpaid':'unpaid';
     var debt=total-paidSum;
 
@@ -2179,7 +2180,7 @@ async function generateReceipt(){
   // Set paid amounts via JS after render to avoid concatenation bug
   sessionOrder.forEach(function(key,idx){
     var sess=sessions[key];
-    var paidSum=sess.items.reduce(function(a,it){return a+(parseInt(it.paid_amount,10)||0);},0);
+    var paidSum=parseInt(sess.items[0]&&sess.items[0].paid_amount||0,10);
     var inputEl=document.getElementById('partial-input-'+idx);
     if(inputEl&&paidSum>0){ inputEl.value=String(paidSum); }
   });
@@ -2205,8 +2206,10 @@ async function setSessionPayment(sessionKey, status, amount){
     return a+Math.round((it.price||0)*(1-d/100));
   },0);
   var paid=status==='paid'?total:status==='unpaid'?0:(amount||0);
-  for(var it of sessItems){
-    await sb.from('stage_items').update({payment_status:status,paid_amount:paid}).eq('id',it.id);
+  for(var i=0;i<sessItems.length;i++){
+    // Store paid_amount only on first item to avoid multiplication on read
+    var pa=i===0?paid:0;
+    await sb.from('stage_items').update({payment_status:status,paid_amount:pa}).eq('id',sessItems[i].id);
   }
   showNotif(status==='paid'?'✓ Marcat ca achitat!':status==='unpaid'?'Marcat ca neachitat.':'Salvat parțial.');
   await generateReceipt();
