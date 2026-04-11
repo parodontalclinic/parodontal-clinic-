@@ -2056,7 +2056,6 @@ async function generateReceipt(){
   if(info)info.classList.remove('hidden');
   el.innerHTML='<div class="loading">Se încarcă...</div>';
 
-  // Load all stages + items for this patient
   var{data:stages}=await sb.from('stages').select('*').eq('patient_id',patId).order('position');
   var allDoneItems=[];
   for(var s of (stages||[])){
@@ -2071,7 +2070,6 @@ async function generateReceipt(){
     return;
   }
 
-  // Group by session: round done_at to nearest 30 minutes to group same visit
   function sessionKey(dt){
     var d=new Date(dt);
     var m=d.getMinutes()<30?0:30;
@@ -2085,11 +2083,18 @@ async function generateReceipt(){
     sessions[key].items.push(it);
   });
 
+  // Calculate payment status per session from items
+  // payment_status per session stored as a virtual sum: sum of paid_amount vs total
   var bonNr=sessionOrder.length;
   el.innerHTML=sessionOrder.map(function(key){
     var sess=sessions[key];
     var dateStr=sess.date.toLocaleString('ro-RO',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
     var total=sess.items.reduce(function(a,it){return a+(it.price||0);},0);
+    var paidSum=sess.items.reduce(function(a,it){return a+(it.paid_amount||0);},0);
+    // Determine session payment status from items
+    var sessStatus=sess.items[0]?sess.items[0].payment_status||'unpaid':'unpaid';
+    var debt=total-paidSum;
+
     var rows=sess.items.map(function(it){
       return '<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid #f1f5f9;font-size:12px">'
         +'<span style="flex:1">'+esc(it.name)+'</span>'
@@ -2097,34 +2102,125 @@ async function generateReceipt(){
         +'<span style="font-weight:600;color:#0c3560;white-space:nowrap;flex-shrink:0">'+fmt(it.price||0)+'</span>'
         +'</div>';
     }).join('');
+
+    // Status badge
+    var statusBadge='';
+    var cardBorder='border:1px solid #e2e8f0';
+    if(sessStatus==='paid'){
+      statusBadge='<span style="background:#dcfce7;color:#16a34a;font-size:11px;font-weight:700;padding:3px 10px;border-radius:999px;border:1px solid #86efac">✓ Achitat</span>';
+      cardBorder='border:1px solid #86efac';
+    } else if(sessStatus==='partial'){
+      statusBadge='<span style="background:#fffbeb;color:#d97706;font-size:11px;font-weight:700;padding:3px 10px;border-radius:999px;border:1px solid #fde68a">◑ Parțial achitat</span>';
+      cardBorder='border:1px solid #fde68a';
+    } else {
+      statusBadge='<span style="background:#fef2f2;color:#dc2626;font-size:11px;font-weight:700;padding:3px 10px;border-radius:999px;border:1px solid #fca5a5">✗ Neachitat</span>';
+      cardBorder='border:1px solid #fca5a5';
+    }
+
+    // Payment summary line
+    var paymentSummary='<div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px;padding-top:8px;border-top:1px solid #e2e8f0;flex-wrap:wrap;gap:6px">'
+      +'<div style="font-size:13px;font-weight:700;color:#0c3560">Total bon: '+fmt(total)+'</div>'
+      +(sessStatus==='partial'
+        ?'<div style="font-size:12px;color:#d97706">Achitat: '+fmt(paidSum)+' · <span style="color:#dc2626;font-weight:700">Datorie: '+fmt(debt)+'</span></div>'
+        :sessStatus==='paid'?'<div style="font-size:12px;color:#16a34a;font-weight:600">Achitat integral</div>'
+        :'<div style="font-size:12px;color:#dc2626;font-weight:700">Datorie: '+fmt(total)+'</div>')
+      +'</div>';
+
+    // Payment controls
+    var paymentControls='<div style="margin-top:10px;padding:10px;background:#f8fafc;border-radius:8px">'
+      +'<div style="font-size:12px;font-weight:600;color:#475569;margin-bottom:8px">Statusul plății</div>'
+      +'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">'
+      +'<button onclick="setSessionPayment(\''+key+'\',\'paid\','+total+')" style="font-size:11px;padding:4px 10px;border-radius:6px;border:1.5px solid '+(sessStatus==='paid'?'#16a34a':'#e2e8f0')+';background:'+(sessStatus==='paid'?'#dcfce7':'#fff')+';cursor:pointer;font-weight:600;color:'+(sessStatus==='paid'?'#16a34a':'#374151')+'">✓ Achitat integral</button>'
+      +'<button onclick="setSessionPayment(\''+key+'\',\'partial\',null)" style="font-size:11px;padding:4px 10px;border-radius:6px;border:1.5px solid '+(sessStatus==='partial'?'#d97706':'#e2e8f0')+';background:'+(sessStatus==='partial'?'#fffbeb':'#fff')+';cursor:pointer;font-weight:600;color:'+(sessStatus==='partial'?'#d97706':'#374151')+'">◑ Parțial</button>'
+      +'<button onclick="setSessionPayment(\''+key+'\',\'unpaid\',0)" style="font-size:11px;padding:4px 10px;border-radius:6px;border:1.5px solid '+(sessStatus==='unpaid'?'#dc2626':'#e2e8f0')+';background:'+(sessStatus==='unpaid'?'#fef2f2':'#fff')+';cursor:pointer;font-weight:600;color:'+(sessStatus==='unpaid'?'#dc2626':'#374151')+'">✗ Neachitat</button>'
+      +'</div>'
+      +(sessStatus==='partial'
+        ?'<div style="display:flex;align-items:center;gap:8px">'
+          +'<input type="number" id="partial-input-'+key.replace(/[^0-9]/g,'')+'" value="'+paidSum+'" min="0" max="'+total+'" placeholder="Suma achitată..." style="flex:1;border:1px solid #e2e8f0;border-radius:6px;padding:5px 8px;font-size:12px;outline:none">'
+          +'<button onclick="savePartialPayment(\''+key+'\','+total+')" style="font-size:11px;padding:5px 12px;border-radius:6px;border:1px solid #0c3560;background:#0c3560;color:#fff;cursor:pointer;font-weight:600">Salvează</button>'
+          +'</div>'
+        :'')
+      +'</div>';
+
     var bonId='bon_'+key.replace(/[^0-9]/g,'');
-    return '<div id="'+bonId+'" style="border:1px solid #e2e8f0;border-radius:10px;padding:14px;margin-bottom:12px;background:#fff">'
-      +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:6px">'
+    var curBon=bonNr--;
+    return '<div id="'+bonId+'" style="'+cardBorder+';border-radius:10px;padding:14px;margin-bottom:12px;background:#fff">'
+      +'<div style="display:flex;align-items:start;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:6px">'
       +'<div>'
-      +'<div style="font-weight:700;font-size:13px;color:#0c3560">🧾 Bon #'+bonNr--+'</div>'
+      +'<div style="font-weight:700;font-size:13px;color:#0c3560">🧾 Bon #'+curBon+'</div>'
       +'<div style="font-size:11px;color:#64748b">📅 '+dateStr+'</div>'
       +'</div>'
-      +'<div style="display:flex;align-items:center;gap:8px">'
-      +'<span style="font-size:16px;font-weight:700;color:#16a34a">'+fmt(total)+'</span>'
-      +'<button class="btn btn-primary" onclick="printReceiptSession(\''+patId+'\',\''+key+'\')" style="font-size:11px;padding:4px 10px">🖨 Print</button>'
+      +'<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">'
+      +statusBadge
+      +'<button class="btn btn-primary" onclick="printReceiptSession(\''+patId+'\',\''+key+'\','+curBon+')" style="font-size:11px;padding:4px 10px">🖨 Print</button>'
       +'</div>'
       +'</div>'
       +rows
+      +paymentSummary
+      +paymentControls
       +'</div>';
   }).join('');
 }
 
-function printReceiptSession(patId,sessionKey){
+async function setSessionPayment(sessionKey, status, amount){
+  // Find all items in this session
   var el=document.getElementById('receipt-preview');
+  var patId=document.getElementById('receipt-patient-sel').value;
+  // Get items for this session from current rendered data
+  var{data:stages}=await sb.from('stages').select('*').eq('patient_id',patId).order('position');
+  var allItems=[];
+  for(var s of (stages||[])){
+    var{data:items}=await sb.from('stage_items').select('*').eq('stage_id',s.id);
+    (items||[]).forEach(function(it){if(it.done&&it.done_at)allItems.push(it);});
+  }
+  function sessKey(dt){var d=new Date(dt);var m=d.getMinutes()<30?0:30;return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate()+' '+d.getHours()+':'+m;}
+  var sessItems=allItems.filter(function(it){return sessKey(it.done_at)===sessionKey;});
+  var total=sessItems.reduce(function(a,it){return a+(it.price||0);},0);
+  var paid=status==='paid'?total:status==='unpaid'?0:(amount||0);
+  for(var it of sessItems){
+    await sb.from('stage_items').update({payment_status:status,paid_amount:paid}).eq('id',it.id);
+  }
+  showNotif(status==='paid'?'✓ Marcat ca achitat!':status==='unpaid'?'Marcat ca neachitat.':'Salvat parțial.');
+  await generateReceipt();
+}
+
+async function savePartialPayment(sessionKey, total){
+  var inputId='partial-input-'+sessionKey.replace(/[^0-9]/g,'');
+  var input=document.getElementById(inputId);
+  if(!input){showNotif('Eroare!',false);return;}
+  var amount=parseInt(input.value)||0;
+  if(amount>=total){
+    await setSessionPayment(sessionKey,'paid',total);
+  } else {
+    await setSessionPayment(sessionKey,'partial',amount);
+  }
+}
+
+
+function printReceiptSession(patId,sessionKey,bonNr){
   var pat=state.patients.find(function(p){return p.id===patId;})||{};
-  // Find the bon card
   var bonId='bon_'+sessionKey.replace(/[^0-9]/g,'');
   var card=document.getElementById(bonId);
   if(!card){showNotif('Eroare la printare!',false);return;}
+  // Extract clean content for print (without buttons/controls)
+  var rows=card.querySelectorAll('[style*="border-bottom:1px solid #f1f5f9"]');
+  var rowsHtml=Array.from(rows).filter(function(r){return r.querySelector('span');}).map(function(r){return r.outerHTML;}).join('');
+  var dateEl=card.querySelector('[style*="11px;color:#64748b"]');
+  var dateStr=dateEl?dateEl.textContent:'';
+  var totalEl=card.querySelector('[style*="font-size:13px;font-weight:700;color:#0c3560"]');
+  var totalStr=totalEl?totalEl.textContent:'';
+  // Payment info
+  var statusEl=card.querySelector('[style*="border-radius:999px"]');
+  var statusStr=statusEl?statusEl.textContent:'';
+  var debtEl=card.querySelector('[style*="color:#dc2626;font-weight:700"]');
+  var debtStr=debtEl?debtEl.textContent:'';
+  var paidEl=card.querySelector('[style*="color:#d97706"]');
+  var paidStr=paidEl?paidEl.textContent:'';
   var w=window.open('','_blank');
-  w.document.write('<!DOCTYPE html><html><head><title>Bon - '+esc(pat.name||'')+'</title>');
-  w.document.write('<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;font-size:13px;padding:24px;max-width:420px;margin:0 auto}@media print{body{padding:12px}}</style>');
-  w.document.write('</head><body>');
+  w.document.write('<!DOCTYPE html><html><head><title>Bon #'+bonNr+' - '+esc(pat.name||'')+'</title>');
+  w.document.write('<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;font-size:13px;padding:24px;max-width:420px;margin:0 auto}@media print{body{padding:12px}}');
+  w.document.write('.row{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid #f1f5f9;font-size:12px}');
+  w.document.write('</style></head><body>');
   w.document.write('<div style="text-align:center;margin-bottom:16px;padding-bottom:12px;border-bottom:2px solid #0c3560">');
   w.document.write('<img src="'+LOGO_B64+'" style="height:50px;object-fit:contain;display:block;margin:0 auto 6px">');
   w.document.write('<div style="font-size:11px;color:#64748b">+373 78 766 688 · Chișinău, str. Nicolai Zelinski 15/3</div>');
@@ -2132,8 +2228,14 @@ function printReceiptSession(patId,sessionKey){
   w.document.write('<div style="margin-bottom:12px;font-size:13px">');
   w.document.write('<div><strong>Pacient:</strong> '+esc(pat.name||'—')+'</div>');
   if(pat.phone) w.document.write('<div><strong>Telefon:</strong> '+esc(pat.phone)+'</div>');
+  w.document.write('<div><strong>Bon #'+bonNr+'</strong> · '+esc(dateStr)+'</div>');
   w.document.write('</div>');
-  w.document.write(card.innerHTML);
+  w.document.write(rowsHtml);
+  w.document.write('<div style="margin-top:10px;padding-top:8px;border-top:2px solid #0c3560;display:flex;justify-content:space-between;align-items:center">');
+  w.document.write('<strong>'+esc(totalStr)+'</strong>');
+  w.document.write('<span style="font-size:12px">'+esc(statusStr)+'</span>');
+  w.document.write('</div>');
+  if(debtStr) w.document.write('<div style="margin-top:6px;font-size:12px;color:#dc2626;font-weight:700;text-align:right">'+esc(paidStr?paidStr+' · ':'')+esc(debtStr)+'</div>');
   w.document.write('<div style="margin-top:24px;display:grid;grid-template-columns:1fr 1fr;gap:20px;font-size:11px;color:#64748b">');
   w.document.write('<div style="border-top:1px solid #ccc;padding-top:6px">Semnătura medicului</div>');
   w.document.write('<div style="border-top:1px solid #ccc;padding-top:6px">Semnătura pacientului</div>');
