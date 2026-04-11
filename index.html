@@ -194,6 +194,9 @@ tr:last-child td{border-bottom:none}
       <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0"/></svg>Notificări
       <span id="reminder-badge" class="hidden" style="position:absolute;top:6px;right:10px;background:#ef4444;color:#fff;font-size:10px;font-weight:700;border-radius:999px;padding:1px 6px;min-width:18px;text-align:center"></span>
     </button>
+    <button class="sidebar-btn" id="sbtn-receipts" onclick="switchTab('receipts')">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h4"/></svg>Bonuri de plată
+    </button>
     <button class="sidebar-btn" id="sbtn-receipt" onclick="switchTab('receipt')">
       <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h4"/></svg>Bon de plată
     </button>
@@ -252,6 +255,7 @@ tr:last-child td{border-bottom:none}
         🔔 Notificări
         <span id="reminder-badge-top" class="hidden" style="position:absolute;top:4px;right:6px;background:#ef4444;color:#fff;font-size:9px;font-weight:700;border-radius:999px;padding:1px 5px"></span>
       </button>
+      <button class="tab-btn" id="tab-btn-receipts" onclick="switchTab('receipts')">🧾 Bonuri</button>
       <button class="tab-btn" id="tab-btn-receipt" onclick="switchTab('receipt')">🧾 Bon de plată</button>
     </div>
 
@@ -658,6 +662,52 @@ tr:last-child td{border-bottom:none}
           <div id="receipt-preview">
             <div class="loading">Selectează un pacient pentru a genera bonul</div>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- BON DE PLATA -->
+    <div id="tab-receipts" class="tab-content">
+      <div class="two-col">
+
+        <!-- STANGA: creare bon -->
+        <div class="card" style="overflow-y:auto;max-height:88vh">
+          <div class="card-title">Bon de plată nou</div>
+          <div class="card-sub">Selectează pacientul și procedurile pentru bon</div>
+
+          <label>Pacient</label>
+          <select id="receipt-patient-sel" onchange="onReceiptPatientChange()">
+            <option value="">— Selectează pacient —</option>
+          </select>
+
+          <label>Medic care a efectuat</label>
+          <select id="receipt-doctor">
+            <option value="">— Selectează medicul —</option>
+            <option value="Dr. Muradu Alexandru">Dr. Muradu Alexandru</option>
+            <option value="Dr. Muradu Ana">Dr. Muradu Ana</option>
+          </select>
+
+          <div id="receipt-procedures-wrap" class="hidden" style="margin-top:14px">
+            <div style="font-size:13px;font-weight:600;color:#0c3560;margin-bottom:8px">Selectează procedurile pentru bon</div>
+            <div id="receipt-procedures-list"></div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px;padding-top:10px;border-top:1px solid #e2e8f0">
+              <span style="font-size:12px;color:#64748b">Total bon selectat:</span>
+              <span id="receipt-total-preview" style="font-size:16px;font-weight:700;color:#0c3560">0 MDL</span>
+            </div>
+            <button class="btn btn-primary btn-full" onclick="saveReceipt()" style="margin-top:10px">
+              🧾 Emite bon de plată
+            </button>
+          </div>
+          <div id="receipt-no-patient" style="color:#94a3b8;font-size:13px;text-align:center;padding:20px">
+            Selectează un pacient pentru a vedea procedurile.
+          </div>
+        </div>
+
+        <!-- DREAPTA: istoricul bonurilor -->
+        <div class="card" style="overflow-y:auto;max-height:88vh">
+          <div class="card-title">Istoricul bonurilor</div>
+          <div class="card-sub" id="receipt-history-sub">Selectează un pacient</div>
+          <div id="receipt-history-list"><div class="loading">Selectează un pacient</div></div>
         </div>
       </div>
     </div>
@@ -1210,7 +1260,7 @@ async function loadAll(){
     if(e2)throw e2;
     state.patients=patients||[];
     state.procedures=procedures||[];
-    updateStats();renderPatients();renderProcedures();renderPdfPatientSelect();populatePatientSelect();
+    updateStats();renderPatients();renderProcedures();renderPdfPatientSelect();populatePatientSelect();populateReceiptPatientSelect();
     await loadReminders();
   }catch(e){
     console.error('loadAll error:',e);
@@ -1869,7 +1919,7 @@ function switchTab(tab){
   if(tab==='pdf'){renderPdfPatientSelect();renderPdfPreview();}
   if(tab==='procedures')renderProcedures();
   if(tab==='reminders'){populateReminderPatientSelect();loadReminders();}
-  if(tab==='receipt'){populateReceiptPatientSelect();}
+  if(tab==='receipts'){populateReceiptPatientSelect();}
 }
 
 // ---- DOCUMENTE + OBSERVATII ----
@@ -2433,6 +2483,189 @@ async function confirmReschedule(){
   showNotif('✓ Reminder reprogramat pentru '+d.toLocaleDateString('ro-RO')+'!');
 }
 // ---- END REMINDERS ----
+
+// ---- BONURI DE PLATA ----
+var receiptSelectedItems={};
+
+function populateReceiptPatientSelect(){
+  var sel=document.getElementById('receipt-patient-sel');
+  if(!sel)return;
+  var cur=sel.value;
+  sel.innerHTML='<option value="">— Selectează pacient —</option>'
+    +state.patients.map(function(p){return'<option value="'+p.id+'">'+esc(p.name)+'</option>';}).join('');
+  if(cur)sel.value=cur;
+}
+
+async function onReceiptPatientChange(){
+  var patId=document.getElementById('receipt-patient-sel').value;
+  receiptSelectedItems={};
+  if(!patId){
+    document.getElementById('receipt-procedures-wrap').classList.add('hidden');
+    document.getElementById('receipt-no-patient').style.display='block';
+    document.getElementById('receipt-history-list').innerHTML='<div class="loading">Selectează un pacient</div>';
+    document.getElementById('receipt-history-sub').textContent='Selectează un pacient';
+    return;
+  }
+  document.getElementById('receipt-no-patient').style.display='none';
+  document.getElementById('receipt-procedures-wrap').classList.remove('hidden');
+  // Load stages for this patient
+  var{data:stages}=await sb.from('stages').select('*').eq('patient_id',patId).order('position');
+  var allItems=[];
+  for(var s of (stages||[])){
+    var{data:items}=await sb.from('stage_items').select('*').eq('stage_id',s.id).order('created_at');
+    (items||[]).forEach(function(it){it._stageName=s.name;allItems.push(it);});
+  }
+  renderReceiptProceduresList(allItems);
+  var pat=state.patients.find(function(p){return p.id===patId;});
+  document.getElementById('receipt-history-sub').textContent=pat?'Bonuri pentru: '+pat.name:'';
+  await loadReceiptHistory(patId);
+}
+
+function renderReceiptProceduresList(items){
+  var el=document.getElementById('receipt-procedures-list');
+  if(!items.length){el.innerHTML='<div style="color:#94a3b8;font-size:13px;padding:10px">Nicio procedură în plan.</div>';return;}
+  // Group by stage
+  var byStage={};var stageOrder=[];
+  items.forEach(function(it){
+    if(!byStage[it._stageName]){byStage[it._stageName]=[];stageOrder.push(it._stageName);}
+    byStage[it._stageName].push(it);
+  });
+  el.innerHTML=stageOrder.map(function(sName){
+    var rows=byStage[sName].map(function(it){
+      var checked=!!receiptSelectedItems[it.id];
+      var doneBy=it.done_by?'<span style="font-size:10px;color:#0c3560;background:#e0f2fe;padding:1px 6px;border-radius:4px;margin-left:4px">'+esc(it.done_by)+'</span>':'';
+      return '<label style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;cursor:pointer;'+(checked?'background:#f0fdf4;':'')+'hover:background:#f8fafc">'
+        +'<input type="checkbox" '+(checked?'checked':'')+' onchange="toggleReceiptItem(\''+it.id+'\','+it.price+',this.checked)" style="width:16px;height:16px;cursor:pointer">'
+        +'<span style="flex:1;font-size:12px">'+esc(it.name)+doneBy+'</span>'
+        +'<span style="font-size:12px;font-weight:600;color:#0c3560;white-space:nowrap">'+fmt(it.price||0)+'</span>'
+        +'</label>';
+    }).join('');
+    return '<div style="margin-bottom:10px">'
+      +'<div style="font-size:11px;font-weight:700;color:#475569;background:#f1f5f9;padding:4px 8px;border-radius:5px;margin-bottom:4px">'+esc(sName)+'</div>'
+      +rows+'</div>';
+  }).join('');
+  updateReceiptTotal();
+}
+
+function toggleReceiptItem(itemId,price,checked){
+  if(checked) receiptSelectedItems[itemId]=price;
+  else delete receiptSelectedItems[itemId];
+  updateReceiptTotal();
+}
+
+function updateReceiptTotal(){
+  var total=Object.values(receiptSelectedItems).reduce(function(a,p){return a+p;},0);
+  var el=document.getElementById('receipt-total-preview');
+  if(el) el.textContent=fmt(total);
+}
+
+async function saveReceipt(){
+  var patId=document.getElementById('receipt-patient-sel').value;
+  var doctor=document.getElementById('receipt-doctor').value;
+  var keys=Object.keys(receiptSelectedItems);
+  if(!patId){showNotif('Selectează un pacient!',false);return;}
+  if(!keys.length){showNotif('Selectează cel puțin o procedură!',false);return;}
+  // Collect full item data
+  var{data:stages}=await sb.from('stages').select('*').eq('patient_id',patId).order('position');
+  var allItems=[];
+  for(var s of (stages||[])){
+    var{data:items}=await sb.from('stage_items').select('*').eq('stage_id',s.id);
+    (items||[]).forEach(function(it){it._stageName=s.name;allItems.push(it);});
+  }
+  var selectedFull=allItems.filter(function(it){return receiptSelectedItems[it.id];});
+  var total=selectedFull.reduce(function(a,it){return a+(it.price||0);},0);
+  var itemsJson=selectedFull.map(function(it){
+    return {id:it.id,name:it.name,price:it.price,stage:it._stageName,done_by:it.done_by||''};
+  });
+  var{error}=await sb.from('payment_receipts').insert([{
+    patient_id:patId,items:itemsJson,total:total,doctor:doctor
+  }]);
+  if(error){showNotif('Eroare: '+error.message,false);return;}
+  receiptSelectedItems={};
+  showNotif('✓ Bon emis cu succes!');
+  await onReceiptPatientChange();
+}
+
+async function loadReceiptHistory(patId){
+  var el=document.getElementById('receipt-history-list');
+  el.innerHTML='<div class="loading">Se încarcă...</div>';
+  var{data,error}=await sb.from('payment_receipts').select('*').eq('patient_id',patId).order('created_at',{ascending:false});
+  if(error){el.innerHTML='<div style="color:#ef4444;font-size:13px">Eroare: '+error.message+'</div>';return;}
+  if(!data||!data.length){el.innerHTML='<div style="color:#94a3b8;font-size:13px;text-align:center;padding:20px">Niciun bon emis.</div>';return;}
+  el.innerHTML=data.map(function(r,idx){
+    var date=new Date(r.created_at).toLocaleString('ro-RO',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+    var items=Array.isArray(r.items)?r.items:JSON.parse(r.items||'[]');
+    var rows=items.map(function(it){
+      return '<div style="display:flex;gap:8px;align-items:center;padding:4px 0;border-bottom:1px solid #f1f5f9;font-size:12px">'
+        +'<span style="flex:1">'+esc(it.name)+'</span>'
+        +(it.done_by?'<span style="font-size:10px;color:#0c3560;background:#e0f2fe;padding:1px 6px;border-radius:4px">'+esc(it.done_by)+'</span>':'')
+        +'<span style="font-weight:600;color:#0c3560;white-space:nowrap">'+fmt(it.price||0)+'</span>'
+        +'</div>';
+    }).join('');
+    return '<div style="border:1px solid #e2e8f0;border-radius:10px;padding:14px;margin-bottom:10px;background:#fff">'
+      +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:6px">'
+      +'<div>'
+      +'<div style="font-weight:700;font-size:13px;color:#0c3560">Bon #'+(data.length-idx)+'</div>'
+      +'<div style="font-size:11px;color:#64748b">📅 '+date+(r.doctor?' · '+esc(r.doctor):'')+'</div>'
+      +'</div>'
+      +'<div style="display:flex;align-items:center;gap:8px">'
+      +'<span style="font-size:16px;font-weight:700;color:#16a34a">'+fmt(r.total)+'</span>'
+      +'<button class="btn btn-primary" onclick="printReceipt(\''+r.id+'\')" style="font-size:11px;padding:4px 10px">🖨 Print</button>'
+      +'<button class="btn btn-danger" onclick="deleteReceipt(\''+r.id+'\')" style="font-size:11px;padding:4px 8px">✕</button>'
+      +'</div>'
+      +'</div>'
+      +rows
+      +'</div>';
+  }).join('');
+}
+
+async function deleteReceipt(id){
+  if(!confirm('Ștergi acest bon?'))return;
+  await sb.from('payment_receipts').delete().eq('id',id);
+  var patId=document.getElementById('receipt-patient-sel').value;
+  if(patId) await loadReceiptHistory(patId);
+  showNotif('Bon șters.');
+}
+
+function printReceipt(id){
+  sb.from('payment_receipts').select('*, patients(name,phone)').eq('id',id).single().then(function(res){
+    var r=res.data;
+    if(!r){showNotif('Eroare la încărcare!',false);return;}
+    var pat=r.patients||{};
+    var items=Array.isArray(r.items)?r.items:JSON.parse(r.items||'[]');
+    var date=new Date(r.created_at).toLocaleString('ro-RO',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+    var rows=items.map(function(it,i){
+      return '<tr>'
+        +'<td style="padding:6px 8px;border-bottom:1px solid #f1f5f9">'+(i+1)+'. '+esc(it.name)+'</td>'
+        +(it.done_by?'<td style="padding:6px 8px;border-bottom:1px solid #f1f5f9;font-size:11px;color:#64748b">'+esc(it.done_by)+'</td>':'<td></td>')
+        +'<td style="padding:6px 8px;border-bottom:1px solid #f1f5f9;text-align:right;font-weight:600;white-space:nowrap">'+fmt(it.price||0)+'</td>'
+        +'</tr>';
+    }).join('');
+    var w=window.open('','_blank');
+    w.document.write('<!DOCTYPE html><html><head><title>Bon - '+esc(pat.name||'')+'</title>');
+    w.document.write('<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;font-size:13px;padding:24px;max-width:400px;margin:0 auto}');
+    w.document.write('table{width:100%;border-collapse:collapse}@media print{body{padding:12px}}');
+    w.document.write('</style></head><body>');
+    w.document.write('<div style="text-align:center;margin-bottom:16px;padding-bottom:12px;border-bottom:2px solid #0c3560">');
+    w.document.write('<img src="'+LOGO_B64+'" style="height:50px;object-fit:contain;display:block;margin:0 auto 6px">');
+    w.document.write('<div style="font-size:11px;color:#64748b">+373 78 766 688 · Chișinău, str. Nicolai Zelinski 15/3</div>');
+    w.document.write('</div>');
+    w.document.write('<div style="margin-bottom:12px">');
+    w.document.write('<div><strong>Pacient:</strong> '+esc(pat.name||'—')+'</div>');
+    if(pat.phone) w.document.write('<div><strong>Telefon:</strong> '+esc(pat.phone)+'</div>');
+    w.document.write('<div><strong>Data:</strong> '+date+'</div>');
+    if(r.doctor) w.document.write('<div><strong>Medic:</strong> '+esc(r.doctor)+'</div>');
+    w.document.write('</div>');
+    w.document.write('<table><thead><tr><th style="padding:6px 8px;background:#f1f5f9;text-align:left">Procedură</th><th style="padding:6px 8px;background:#f1f5f9;text-align:left">Medic</th><th style="padding:6px 8px;background:#f1f5f9;text-align:right">Preț</th></tr></thead><tbody>'+rows+'</tbody></table>');
+    w.document.write('<div style="text-align:right;margin-top:12px;padding-top:10px;border-top:2px solid #0c3560;font-size:16px;font-weight:700;color:#0c3560">TOTAL: '+fmt(r.total)+'</div>');
+    w.document.write('<div style="margin-top:24px;display:grid;grid-template-columns:1fr 1fr;gap:20px;font-size:11px;color:#64748b">');
+    w.document.write('<div style="border-top:1px solid #e2e8f0;padding-top:6px">Semnătura medicului</div>');
+    w.document.write('<div style="border-top:1px solid #e2e8f0;padding-top:6px">Semnătura pacientului</div>');
+    w.document.write('</div></body></html>');
+    w.document.close();w.focus();setTimeout(function(){w.print();},600);
+  });
+}
+// ---- END BONURI ----
 
 // ---- SCHIMBARE PAROLA ----
 function openChangePassword(){
