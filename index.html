@@ -2125,7 +2125,7 @@ async function generateReceipt(){
   for(var s of (stages||[])){
     var{data:items}=await sb.from('stage_items').select('*').eq('stage_id',s.id).order('done_at');
     (items||[]).forEach(function(it){
-      if(it.done&&it.done_at) allDoneItems.push(Object.assign({},it,{_stageName:s.name,_stageDiscount:s.discount||0}));
+      if(it.done&&it.done_at&&!it.receipt_deleted) allDoneItems.push(Object.assign({},it,{_stageName:s.name,_stageDiscount:s.discount||0}));
     });
   }
 
@@ -2235,6 +2235,7 @@ async function generateReceipt(){
       +'<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">'
       +statusBadge
       +'<button class="btn btn-primary" onclick="printReceiptSession(\''+patId+'\',\''+key+'\','+curBon+')" style="font-size:11px;padding:4px 10px">🖨 Print</button>'
+      +'<button class="btn btn-danger" onclick="deleteReceiptSession(\''+patId+'\',\''+key+'\')" style="font-size:11px;padding:4px 8px">✕</button>'
       +'</div>'
       +'</div>'
       +rows
@@ -2291,6 +2292,23 @@ async function savePartialPayment(sessionKey, total, idx){
   }
 }
 
+
+async function deleteReceiptSession(patId, sessionKey){
+  if(!confirm('Ștergi acest bon? Procedurile efectuate rămân neschimbate în planul de tratament.')) return;
+  var{data:stages}=await sb.from('stages').select('*').eq('patient_id',patId);
+  var allItems=[];
+  for(var s of (stages||[])){
+    var{data:items}=await sb.from('stage_items').select('*').eq('stage_id',s.id);
+    (items||[]).forEach(function(it){if(it.done&&it.done_at) allItems.push(it);});
+  }
+  function sessKey(dt){var d=new Date(dt);var m=d.getMinutes()<30?0:30;return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate()+' '+d.getHours()+':'+m;}
+  var sessItems=allItems.filter(function(it){return sessKey(it.done_at)===sessionKey;});
+  for(var it of sessItems){
+    await sb.from('stage_items').update({receipt_deleted:true}).eq('id',it.id);
+  }
+  showNotif('✓ Bon șters.');
+  await generateReceipt();
+}
 
 function printReceiptSession(patId,sessionKey,bonNr){
   var pat=state.patients.find(function(p){return p.id===patId;})||{};
