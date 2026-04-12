@@ -1809,9 +1809,17 @@ function renderPdfPreviewWithLang(lang){
   var doctor=(document.getElementById('clinic-doctor')||{}).value||(document.getElementById('sel-doctor')||{}).value||'';
   var today=new Date().toLocaleDateString('ro-RO');
   if(!patId||!state.stages.length){document.getElementById('pdf-preview').innerHTML='<div class="loading">Selectează un pacient cu plan de tratament</div>';return;}
-  var html=state.stages.map(function(stage,idx){
+
+  var gt=grandTotal();
+  var gtWithDisc=state.stages.reduce(function(a,s){
+    var d=s.discount||0;var st=stTotal(state.stageItems[s.id]||[]);
+    return a+Math.round(st*(1-d/100));
+  },0);
+  var hasAnyDisc=state.stages.some(function(s){return (s.discount||0)>0;});
+
+  // Build all stages HTML (no individual headers)
+  var stagesHtml=state.stages.map(function(stage,idx){
     var items=state.stageItems[stage.id]||[];
-    var isLast=idx===state.stages.length-1;
     var stDisc=stage.discount||0;
     var stTot=stTotal(items);
     var stTotDisc=stDisc>0?Math.round(stTot*(1-stDisc/100)):stTot;
@@ -1828,50 +1836,17 @@ function renderPdfPreviewWithLang(lang){
           return'<tr><td style="width:28px;text-align:center"><div style="width:16px;height:16px;border:1.5px solid #94a3b8;border-radius:3px;display:inline-block"></div></td><td>'+esc(translatedName)+'</td><td style="text-align:right;font-weight:600;white-space:nowrap">'+fmt(it.price||0)+'</td></tr>';
         }).join('');
       }).join('');
-    // Stage total box
     var stageTotalBox=stDisc>0
-      ?'<div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px;padding:10px 14px;background:#f0fdf4;border-radius:8px;border:1px solid #86efac">'
-         +'<div><div style="font-size:11px;color:#64748b">'+t.stageTotal+'</div>'
-         +'<div style="font-size:12px;color:#94a3b8;text-decoration:line-through">'+fmt(stTot)+'</div></div>'
-         +'<div style="text-align:right"><span style="background:#dc2626;color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:999px;margin-bottom:3px;display:inline-block">-'+stDisc+'%</span>'
-         +'<div style="font-size:15px;font-weight:700;color:#16a34a">'+fmt(stTotDisc)+'</div></div></div>'
-      :'<div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px;padding:10px 14px;background:#e0f2fe;border-radius:8px;border:1px solid #bae6fd">'
-         +'<span style="font-size:12px;font-weight:600;color:#0369a1">'+t.stageTotal+'</span>'
-         +'<span style="font-size:15px;font-weight:700;color:#0c3560">'+fmt(stTot)+'</span></div>';
-    // Grand total (last page)
-    var gt=grandTotal();
-    var gtWithDisc=state.stages.reduce(function(a,s){
-      var d=s.discount||0;var st=stTotal(state.stageItems[s.id]||[]);
-      return a+Math.round(st*(1-d/100));
-    },0);
-    var hasAnyDisc=state.stages.some(function(s){return (s.discount||0)>0;});
-    var grandTotalBox=hasAnyDisc
-      ?'<div style="margin-top:14px;padding-top:12px;border-top:2px solid #0c3560;display:flex;flex-direction:column;align-items:flex-end;gap:4px">'
-         +'<div style="font-size:13px;color:#64748b">'+t.grandTotal+' fără reducere: <span style="font-weight:600;text-decoration:line-through">'+fmt(gt)+'</span></div>'
-         +'<div style="font-size:18px;font-weight:700;color:#16a34a">'+t.grandTotal+': '+fmt(gtWithDisc)+'</div></div>'
-      :'<div style="margin-top:14px;text-align:right;font-size:16px;font-weight:700;color:#0c3560;padding-top:12px;border-top:2px solid #0c3560">'+t.grandTotal+': '+fmt(gt)+'</div>';
-    return'<div class="pdf-page">'
-      +'<div class="pdf-header"><img src="'+LOGO_B64+'" style="height:144px;object-fit:contain;max-width:540px">'
-      +'<div style="flex:1"><div style="font-size:12px;color:#64748b;margin-top:2px">'+t.planTitle+'</div>'
-      +'<div style="font-size:11px;color:#94a3b8;margin-top:2px">'+esc(phone)+(addr?' · '+esc(addr):'')+'</div></div>'
-      +'<div style="text-align:right;font-size:11px;color:#94a3b8">'+t.date+': '+today+'</div></div>'
-      +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px;margin-bottom:14px;background:#f8fafc;padding:12px;border-radius:8px">'
-      +'<div><strong>'+t.patient+':</strong> '+esc(pat?pat.name:'—')+'</div>'
-      +'<div><strong>'+t.doctor+':</strong> '+esc(doctor||'Dr. ______________')+'</div>'
-      +(pat&&pat.diagnosis?'<div style="grid-column:span 2"><strong>Diagnostic:</strong> '+esc(pat.diagnosis)+'</div>':'')
-      +'</div>'
-      +'<div style="font-weight:600;color:#0c3560;margin-bottom:8px;font-size:13px">'+t.stage+' '+(idx+1)+': '+esc(stage.name)+'</div>'
-      +'<table class="pdf-table"><thead><tr><th style="width:28px">✓</th><th>'+t.procedure+'</th><th style="text-align:right">'+t.price+'</th></tr></thead><tbody>'+rows+'</tbody></table>'
-      +stageTotalBox
-      +(isLast
-        ?'<div style="margin-top:14px;padding:12px;background:#f0fdf4;border-radius:8px;font-size:12px;border:1px solid #bbf7d0"><strong>'+t.recommendations+':</strong> '+t.rec+'</div>'
-         +grandTotalBox
-         +'<div style="margin-top:20px;display:grid;grid-template-columns:1fr 1fr;gap:20px;font-size:12px;color:#64748b">'
-         +'<div style="border-top:1px solid #e2e8f0;padding-top:8px">Semnătura medicului</div>'
-         +'<div style="border-top:1px solid #e2e8f0;padding-top:8px">Semnătura pacientului</div></div>'
-        :'')
-      +'</div>';
+      ?'<div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px;padding:8px 12px;background:#f0fdf4;border-radius:8px;border:1px solid #86efac">'         +'<div><div style="font-size:11px;color:#64748b">'+t.stageTotal+'</div>'         +'<div style="font-size:12px;color:#94a3b8;text-decoration:line-through">'+fmt(stTot)+'</div></div>'         +'<div style="text-align:right"><span style="background:#dc2626;color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:999px;margin-bottom:3px;display:inline-block">-'+stDisc+'%</span>'         +'<div style="font-size:15px;font-weight:700;color:#16a34a">'+fmt(stTotDisc)+'</div></div></div>'
+      :'<div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px;padding:8px 12px;background:#e0f2fe;border-radius:8px;border:1px solid #bae6fd">'         +'<span style="font-size:12px;font-weight:600;color:#0369a1">'+t.stageTotal+'</span>'         +'<span style="font-size:15px;font-weight:700;color:#0c3560">'+fmt(stTot)+'</span></div>';
+    return '<div style="margin-bottom:18px">'      +'<div style="font-weight:600;color:#0c3560;margin-bottom:8px;font-size:13px;padding-bottom:6px;border-bottom:1px solid #e2e8f0">'+t.stage+' '+(idx+1)+': '+esc(stage.name)+'</div>'      +'<table class="pdf-table"><thead><tr><th style="width:28px">✓</th><th>'+t.procedure+'</th><th style="text-align:right">'+t.price+'</th></tr></thead><tbody>'+rows+'</tbody></table>'      +stageTotalBox      +'</div>';
   }).join('');
+
+  var grandTotalBox=hasAnyDisc
+    ?'<div style="margin-top:14px;padding-top:12px;border-top:2px solid #0c3560;display:flex;flex-direction:column;align-items:flex-end;gap:4px">'       +'<div style="font-size:13px;color:#64748b">'+t.grandTotal+' fără reducere: <span style="font-weight:600;text-decoration:line-through">'+fmt(gt)+'</span></div>'       +'<div style="font-size:18px;font-weight:700;color:#16a34a">'+t.grandTotal+': '+fmt(gtWithDisc)+'</div></div>'
+    :'<div style="margin-top:14px;text-align:right;font-size:16px;font-weight:700;color:#0c3560;padding-top:12px;border-top:2px solid #0c3560">'+t.grandTotal+': '+fmt(gt)+'</div>';
+
+  var html='<div class="pdf-page">'    +'<div class="pdf-header"><img src="'+LOGO_B64+'" style="height:60px;object-fit:contain;max-width:200px">'    +'<div style="flex:1"><div style="font-size:12px;color:#64748b;margin-top:2px">'+t.planTitle+'</div>'    +'<div style="font-size:11px;color:#94a3b8;margin-top:2px">'+esc(phone)+(addr?' · '+esc(addr):'')+'</div></div>'    +'<div style="text-align:right;font-size:11px;color:#94a3b8">'+t.date+': '+today+'</div></div>'    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px;margin-bottom:16px;background:#f8fafc;padding:12px;border-radius:8px">'    +'<div><strong>'+t.patient+':</strong> '+esc(pat?pat.name:'—')+'</div>'    +'<div><strong>'+t.doctor+':</strong> '+esc(doctor||'Dr. ______________')+'</div>'    +(pat&&pat.diagnosis?'<div style="grid-column:span 2"><strong>Diagnostic:</strong> '+esc(pat.diagnosis)+'</div>':'')    +'</div>'    +stagesHtml    +'<div style="margin-top:14px;padding:12px;background:#f0fdf4;border-radius:8px;font-size:12px;border:1px solid #bbf7d0"><strong>'+t.recommendations+':</strong> '+t.rec+'</div>'    +grandTotalBox    +'<div style="margin-top:20px;display:grid;grid-template-columns:1fr 1fr;gap:20px;font-size:12px;color:#64748b">'    +'<div style="border-top:1px solid #e2e8f0;padding-top:8px">Semnătura medicului</div>'    +'<div style="border-top:1px solid #e2e8f0;padding-top:8px">Semnătura pacientului</div></div>'    +'</div>';
   document.getElementById('pdf-preview').innerHTML=html;
 }
 
@@ -2007,10 +1982,10 @@ function printPdf(){
     w.document.write('body{font-family:Arial,sans-serif;font-size:12px;padding:20px;color:#1e293b}');
     w.document.write('table{width:100%;border-collapse:collapse}th{background:#f1f5f9;padding:6px 8px;text-align:left;font-size:11px;font-weight:600}td{padding:6px 8px;border-top:1px solid #f1f5f9;vertical-align:middle}');
     w.document.write('.check-box{width:16px;height:16px;border:1.5px solid #94a3b8;border-radius:3px;display:inline-block}');
-    w.document.write('.pdf-page{border:1px solid #e2e8f0;border-radius:8px;padding:20px;margin-bottom:20px;page-break-after:always}');
+    w.document.write('.pdf-page{padding:20px}');
     w.document.write('.pdf-header{display:flex;align-items:center;gap:14px;padding-bottom:14px;border-bottom:1px solid #e2e8f0;margin-bottom:14px}');
     w.document.write('.pdf-clinic-name{font-size:15px;font-weight:700;color:#0c3560}');
-    w.document.write('@media print{body{padding:10px}.pdf-page{page-break-after:always;border:none}}');
+    w.document.write('@media print{body{padding:10px}}');
   }
   w.document.write('</style></head><body>');
   w.document.write(prev.innerHTML);
