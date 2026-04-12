@@ -308,12 +308,6 @@ tr:last-child td{border-bottom:none}
             <option value="Dr. Muradu Ana">Dr. Muradu Ana</option>
           </select>
 
-          <label style="margin-top:10px">Variantă</label>
-          <select id="sel-variant" onchange="onVariantChange()">
-            <option value="">— Fără variantă —</option>
-          </select>
-          <button class="btn btn-full" onclick="addVariant()" style="margin-top:6px">+ Adaugă variantă nouă</button>
-
           <label style="margin-top:10px">Etapă activă</label>
           <select id="sel-stage">
             <option value="">— Selectează etapă —</option>
@@ -1002,7 +996,7 @@ var TRANSLATIONS = {
 };
 
 
-var state={currentUser:null,patients:[],procedures:[],stages:[],stageItems:{},doneItems:{},translations:{},discount:0,selectedPatientId:null,activeStageId:null,pdfPatientId:null,variants:[],activeVariantId:null};
+var state={currentUser:null,patients:[],procedures:[],stages:[],stageItems:{},doneItems:{},translations:{},discount:0,selectedPatientId:null,activeStageId:null,pdfPatientId:null};
 var cart=[];
 var selectedTeeth=[];
 
@@ -1356,14 +1350,6 @@ async function loadPatientDebts(){
 }
 
 async function loadStagesForPatient(patientId){
-  // Load variants first
-  var{data:variants}=await sb.from('variants').select('*').eq('patient_id',patientId).order('position');
-  state.variants=variants||[];
-  // Set active variant
-  if(state.variants.length>0&&!state.activeVariantId){
-    state.activeVariantId=state.variants[0].id;
-  }
-  // Load all stages
   var{data:stages}=await sb.from('stages').select('*').eq('patient_id',patientId).order('position');
   state.stages=stages||[];state.stageItems={};state.doneItems={};
   for(var s of state.stages){
@@ -1371,10 +1357,7 @@ async function loadStagesForPatient(patientId){
     state.stageItems[s.id]=items||[];
     (items||[]).forEach(function(it){if(it.done)state.doneItems[it.id]=it.done_at||true;});
   }
-  // Set active stage for current variant
-  var varStages=state.stages.filter(function(s){return s.variant_id===state.activeVariantId;});
-  if(varStages.length>0&&!state.activeStageId) state.activeStageId=varStages[0].id;
-  // Load patient doctor
+  if(state.stages.length>0&&!state.activeStageId)state.activeStageId=state.stages[0].id;
   var pat=state.patients.find(function(p){return p.id===patientId;});
   if(pat&&pat.doctor){
     var selDoc=document.getElementById('sel-doctor');
