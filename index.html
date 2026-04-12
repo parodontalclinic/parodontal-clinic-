@@ -309,8 +309,8 @@ tr:last-child td{border-bottom:none}
           </select>
 
           <label style="margin-top:10px">Variantă</label>
-          <select id="sel-variant">
-            <option value="">— Selectează variantă —</option>
+          <select id="sel-variant" onchange="onVariantChange()">
+            <option value="">— Fără variantă —</option>
           </select>
           <button class="btn btn-full" onclick="addVariant()" style="margin-top:6px">+ Adaugă variantă nouă</button>
 
@@ -1356,15 +1356,24 @@ async function loadPatientDebts(){
 }
 
 async function loadStagesForPatient(patientId){
+  // Load variants first
+  var{data:variants}=await sb.from('variants').select('*').eq('patient_id',patientId).order('position');
+  state.variants=variants||[];
+  // Set active variant
+  if(state.variants.length>0&&!state.activeVariantId){
+    state.activeVariantId=state.variants[0].id;
+  }
+  // Load all stages
   var{data:stages}=await sb.from('stages').select('*').eq('patient_id',patientId).order('position');
   state.stages=stages||[];state.stageItems={};state.doneItems={};
   for(var s of state.stages){
     var{data:items}=await sb.from('stage_items').select('*').eq('stage_id',s.id).order('created_at');
     state.stageItems[s.id]=items||[];
-    // Load done states from DB
     (items||[]).forEach(function(it){if(it.done)state.doneItems[it.id]=it.done_at||true;});
   }
-  if(state.stages.length>0&&!state.activeStageId)state.activeStageId=state.stages[0].id;
+  // Set active stage for current variant
+  var varStages=state.stages.filter(function(s){return s.variant_id===state.activeVariantId;});
+  if(varStages.length>0&&!state.activeStageId) state.activeStageId=varStages[0].id;
   // Load patient doctor
   var pat=state.patients.find(function(p){return p.id===patientId;});
   if(pat&&pat.doctor){
@@ -1505,42 +1514,60 @@ function onProcedureChange(){
 
 function renderStageSelect(){
   var sel=document.getElementById('sel-stage');
+  var varStages=state.activeVariantId
+    ?state.stages.filter(function(s){return s.variant_id===state.activeVariantId;})
+    :state.stages.filter(function(s){return !s.variant_id;});
   sel.innerHTML='<option value="">— Selectează etapă —</option>'
-    +state.stages.map(function(s){return'<option value="'+s.id+'"'+(s.id===state.activeStageId?' selected':'')+'>'+esc(s.name)+'</option>';}).join('');
+    +varStages.map(function(s){return'<option value="'+s.id+'"'+(s.id===state.activeStageId?' selected':'')+'>'+esc(s.name)+'</option>';}).join('');
 }
 
 function renderVariantSelect(){
   var sel=document.getElementById('sel-variant');
   if(!sel) return;
-  var cur=sel.value||state.activeVariantId||'';
-  // Collect unique variants from existing stage items
-  var existing=[];
-  Object.values(state.stageItems).forEach(function(items){
-    items.forEach(function(it){if(it.variant&&existing.indexOf(it.variant)<0) existing.push(it.variant);});
-  });
   sel.innerHTML='<option value="">— Fără variantă —</option>'
-    +existing.map(function(v){return'<option value="'+esc(v)+'"'+(cur===v?' selected':'')+'>'+esc(v)+'</option>';}).join('');
-  if(cur) sel.value=cur;
+    +state.variants.map(function(v){
+      return'<option value="'+v.id+'"'+(v.id===state.activeVariantId?' selected':'')+'>'+esc(v.name)+'</option>';
+    }).join('');
+  if(state.activeVariantId) sel.value=state.activeVariantId;
+}
+
+function onVariantChange(){
+  var sel=document.getElementById('sel-variant');
+  var vid=sel?sel.value:'';
+  state.activeVariantId=vid||null;
+  state.activeStageId=null;
+  // Set first stage of this variant as active
+  var varStages=state.stages.filter(function(s){return s.variant_id===state.activeVariantId;});
+  if(varStages.length>0) state.activeStageId=varStages[0].id;
+  renderTreatment();
 }
 
 async function addVariant(){
   if(!state.selectedPatientId){showNotif('Selectează mai întâi un pacient!',false);return;}
-  var name=prompt('Denumire variantă nouă (ex: Varianta 1, Plan A, Variantă economică...):');
+  var name=prompt('Denumire variantă (ex: Varianta 1, Plan A, Variantă economică...):');
   if(!name||!name.trim()) return;
   name=name.trim();
-  // Add to select and set active
-  var sel=document.getElementById('sel-variant');
-  if(sel){
-    var exists=Array.from(sel.options).some(function(o){return o.value===name;});
-    if(!exists){
-      var opt=document.createElement('option');
-      opt.value=name;opt.textContent=name;
-      sel.appendChild(opt);
-    }
-    sel.value=name;
-    state.activeVariantId=name;
-  }
-  showNotif('✓ Variantă setată: '+name);
+  var pos=state.variants.length;
+  var{data,error}=await sb.from('variants').insert([{patient_id:state.selectedPatientId,name:name,position:pos}]).select().single();
+  if(error){showNotif('Eroare: '+error.message,false);return;}
+  state.variants.push(data);
+  state.activeVariantId=data.id;
+  state.activeStageId=null;
+  renderTreatment();
+  showNotif('✓ Variantă adăugată: '+name);
+}
+
+async function deleteVariant(variantId){
+  var v=state.variants.find(function(v){return v.id===variantId;});
+  if(!v||!confirm('Ștergi varianta "'+v.name+'" și toate etapele ei?')) return;
+  var{error}=await sb.from('variants').delete().eq('id',variantId);
+  if(error){showNotif('Eroare: '+error.message,false);return;}
+  state.variants=state.variants.filter(function(v){return v.id!==variantId;});
+  state.stages=state.stages.filter(function(s){return s.variant_id!==variantId;});
+  state.activeVariantId=state.variants.length>0?state.variants[0].id:null;
+  state.activeStageId=null;
+  renderTreatment();
+  showNotif('Variantă ștearsă.');
 }
 
 function renderTreatment(){
@@ -1572,13 +1599,93 @@ function renderTreatment(){
     if(docsSection) docsSection.classList.add('hidden');
     if(pdfBtnSection) pdfBtnSection.classList.add('hidden');
   }
-  if(!state.selectedPatientId||!state.stages.length){
-    document.getElementById('stages-editor').innerHTML='<div class="loading">'+(state.selectedPatientId?'Nicio etapă — apasă "+ Adaugă etapă nouă"':'Selectează un pacient pentru a începe')+'</div>';
+  if(!state.selectedPatientId){
+    document.getElementById('stages-editor').innerHTML='<div class="loading">Selectează un pacient pentru a începe</div>';
     document.getElementById('grand-total-editor').classList.add('hidden');
     return;
   }
+
+  // Determine which stages to show
+  var hasVariants=state.variants.length>0;
+  var activeVid=state.activeVariantId;
+  var stagesToShow=hasVariants
+    ?(activeVid?state.stages.filter(function(s){return s.variant_id===activeVid;}):[] )
+    :state.stages;
+
+  // If only 1 variant exists, show it directly without variant boxes
+  var showVariantBoxes=state.variants.length>1;
+
+  if(!stagesToShow.length&&!showVariantBoxes){
+    document.getElementById('stages-editor').innerHTML='<div class="loading">Nicio etapă — apasă "+ Adaugă etapă nouă"</div>';
+    document.getElementById('grand-total-editor').classList.add('hidden');
+    return;
+  }
+
   document.getElementById('grand-total-editor').classList.remove('hidden');
-  document.getElementById('stages-editor').innerHTML=state.stages.map(function(stage){
+
+  // Render variant boxes if multiple variants
+  if(showVariantBoxes){
+    var varBoxes=state.variants.map(function(v){
+      var vStages=state.stages.filter(function(s){return s.variant_id===v.id;});
+      var vTotal=vStages.reduce(function(a,s){
+        var d=s.discount||0;var st=stTotal(state.stageItems[s.id]||[]);
+        return a+Math.round(st*(1-d/100));
+      },0);
+      var isActive=v.id===activeVid;
+      return '<div style="border:2px solid '+(isActive?'#0c3560':'#e2e8f0')+';border-radius:12px;padding:14px;margin-bottom:10px;background:'+(isActive?'#eff6ff':'#fff')+'">'
+        +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:6px">'
+        +'<div style="font-weight:700;font-size:14px;color:#0c3560">'+esc(v.name)+'</div>'
+        +'<div style="display:flex;align-items:center;gap:6px">'
+        +'<span style="font-size:13px;font-weight:600;color:#0369a1">'+fmt(vTotal)+'</span>'
+        +(isActive
+          ?'<span style="font-size:11px;background:#0c3560;color:#fff;padding:2px 8px;border-radius:999px">Activă</span>'
+          :'<button class="btn btn-primary" onclick="switchVariant(\''+v.id+'\')" style="font-size:11px;padding:3px 10px">Selectează</button>')
+        +'<button class="btn btn-danger" onclick="deleteVariant(\''+v.id+'\')" style="font-size:11px;padding:3px 8px">✕</button>'
+        +'</div></div>'
+        +(isActive&&vStages.length?'<div style="font-size:12px;color:#64748b">'+vStages.length+' etape</div>':'')
+        +(isActive?'<hr style="border:none;border-top:1px solid #e2e8f0;margin:10px 0">'+renderStagesHtml(vStages):'')
+        +'</div>';
+    }).join('');
+    document.getElementById('stages-editor').innerHTML=varBoxes;
+    renderGrandTotal();
+    return;
+  }
+
+  document.getElementById('stages-editor').innerHTML=renderStagesHtml(stagesToShow);
+  renderGrandTotal();
+}
+
+function renderGrandTotal(){
+  var gt=grandTotal();
+  var gtWithDisc=state.stages.reduce(function(a,s){
+    var d=s.discount||0;var st=stTotal(state.stageItems[s.id]||[]);
+    return a+Math.round(st*(1-d/100));
+  },0);
+  var hasAnyDisc=state.stages.some(function(s){return (s.discount||0)>0;});
+  var gtEl=document.getElementById('grand-total-editor');
+  if(hasAnyDisc){
+    gtEl.innerHTML='<div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;padding-top:14px;border-top:1px solid #e2e8f0">'
+      +'<div style="font-size:13px;color:#64748b">Total fără reducere: <span style="font-weight:600;text-decoration:line-through">'+fmt(gt)+'</span></div>'
+      +'<div style="font-size:18px;font-weight:700;color:#16a34a">Total cu reducere: '+fmt(gtWithDisc)+'</div>'
+      +'</div>';
+  } else {
+    gtEl.textContent='Total general: '+fmt(gt);
+  }
+}
+
+function switchVariant(variantId){
+  state.activeVariantId=variantId;
+  state.activeStageId=null;
+  var varStages=state.stages.filter(function(s){return s.variant_id===variantId;});
+  if(varStages.length>0) state.activeStageId=varStages[0].id;
+  var sel=document.getElementById('sel-variant');
+  if(sel) sel.value=variantId;
+  renderTreatment();
+}
+
+function renderStagesHtml(stagesToRender){
+  if(!stagesToRender.length) return '<div style="color:#94a3b8;font-size:12px;padding:6px 0">Nicio etapă. Apasă "+ Adaugă etapă nouă".</div>';
+  return stagesToRender.map(function(stage){
     var items=state.stageItems[stage.id]||[];
     var disc=stage.discount||0;
     var groups=groupItemsByArch(items);
@@ -1617,18 +1724,6 @@ function renderTreatment(){
     for(var d2=1;d2<=20;d2++) discOpts+='<option value="'+d2+'"'+(disc===d2?' selected':'')+'>'+d2+'%</option>';
     return '<div class="stage-block">'      +'<div class="stage-header">'      +'<div style="font-weight:600;color:#0c3560;font-size:14px">'+esc(stage.name)+'</div>'      +'<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">'      +'<select style="font-size:12px;padding:3px 6px;border-radius:6px;border:1px solid #e2e8f0;color:#0c3560;width:auto;cursor:pointer" onchange="saveStageDiscount(\''+stage.id+'\',this.value)">'+discOpts+'</select>'      +'<span class="stage-badge-total" data-sid="'+stage.id+'">'      +(disc>0        ?'<span style="font-size:12px;color:#94a3b8;text-decoration:line-through">'+fmt(stTot)+'</span>'         +' <span style="background:#dcfce7;color:#16a34a;font-weight:700;font-size:13px;padding:4px 10px;border-radius:8px;border:1px solid #86efac">'+fmt(stTotDisc)+'</span>'        :'<span style="background:#e0f2fe;color:#0369a1;font-weight:700;font-size:13px;padding:4px 10px;border-radius:8px;border:1px solid #bae6fd">'+fmt(stTot)+'</span>')      +'</span>'      +'<button class="btn btn-danger" onclick="deleteStage(\''+stage.id+'\')" style="padding:4px 10px;font-size:11px">Șterge etapă</button>'      +'</div></div>'+itemsHtml+'</div>';
     }).join('');
-  var gt=grandTotal();
-  var gtWithDisc=state.stages.reduce(function(a,s){
-    var d=s.discount||0;var st=stTotal(state.stageItems[s.id]||[]);
-    return a+Math.round(st*(1-d/100));
-  },0);
-  var hasAnyDisc=state.stages.some(function(s){return (s.discount||0)>0;});
-  var gtEl=document.getElementById('grand-total-editor');
-  if(hasAnyDisc){
-    gtEl.innerHTML='<div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;padding-top:14px;border-top:1px solid #e2e8f0">'      +'<div style="font-size:13px;color:#64748b">Total fără reducere: <span style="font-weight:600;text-decoration:line-through">'+fmt(gt)+'</span></div>'      +'<div style="font-size:18px;font-weight:700;color:#16a34a">Total cu reducere: '+fmt(gtWithDisc)+'</div>'      +'</div>';
-  } else {
-    gtEl.textContent='Total general: '+fmt(gt);
-  }
 }
 
 async function syncDoctor(){
@@ -1786,7 +1881,9 @@ async function deleteStage(stageId){
 
 async function addStage(){
   if(!state.selectedPatientId){showNotif('Selectează mai întâi un pacient!',false);return;}
-  var obj={patient_id:state.selectedPatientId,name:'Etapa '+(state.stages.length+1),position:state.stages.length};
+  var variantId=state.activeVariantId||null;
+  var varStages=variantId?state.stages.filter(function(s){return s.variant_id===variantId;}):state.stages;
+  var obj={patient_id:state.selectedPatientId,name:'Etapa '+(varStages.length+1),position:varStages.length,variant_id:variantId};
   var{data,error}=await sb.from('stages').insert([obj]).select().single();
   if(error){showNotif('Eroare: '+error.message,false);return;}
   state.stages.push(data);state.stageItems[data.id]=[];state.activeStageId=data.id;
