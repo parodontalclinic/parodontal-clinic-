@@ -1296,23 +1296,33 @@ var state_patientDebts={}; // patientId -> debt amount
 
 async function loadPatientDebts(){
   state_patientDebts={};
-  // Get all done stage_items with partial payment
+  // Get ALL done stage_items (filter partial in JS to handle null receipt_deleted)
   var{data:items}=await sb.from('stage_items')
-    .select('id,price,payment_status,paid_amount,receipt_deleted,stage_id')
+    .select('id,price,payment_status,paid_amount,receipt_deleted,stage_id,done_at')
     .eq('done',true)
-    .eq('payment_status','partial')
-    .eq('receipt_deleted',false);
+    .eq('payment_status','partial');
   if(!items||!items.length) return;
+
+  // Filter out deleted receipts (null counts as not deleted)
+  items=items.filter(function(it){return !it.receipt_deleted;});
+  if(!items.length) return;
+
   // Get stage->patient mapping
   var stageIds=[...new Set(items.map(function(it){return it.stage_id;}))];
   var{data:stages}=await sb.from('stages').select('id,patient_id,discount').in('id',stageIds);
   if(!stages) return;
   var stageMap={};
   stages.forEach(function(s){stageMap[s.id]=s;});
-  // Group by session (same as generateReceipt) and take MAX paid_amount per session
-  function sessKey(dt){var d=new Date(dt);var m=d.getMinutes()<30?0:30;return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate()+' '+d.getHours()+':'+m;}
-  // For each item, compute debt
-  var processed={};
+
+  // Group by patient+session, compute total and max paid_amount per session
+  function sessKey(dt){
+    if(!dt) return 'unknown';
+    var d=new Date(dt);
+    var m=d.getMinutes()<30?0:30;
+    return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate()+' '+d.getHours()+':'+m;
+  }
+
+  var sessions={}; // "patId|sessKey" -> {total, maxPaid, disc}
   items.forEach(function(it){
     var stage=stageMap[it.stage_id];
     if(!stage) return;
@@ -1320,16 +1330,18 @@ async function loadPatientDebts(){
     var disc=stage.discount||0;
     var priceDisc=Math.round((it.price||0)*(1-disc/100));
     var paid=parseInt(it.paid_amount,10)||0;
-    var debt=priceDisc-paid;
+    var sk=patId+'|'+sessKey(it.done_at);
+    if(!sessions[sk]) sessions[sk]={total:0,maxPaid:0,patId:patId};
+    sessions[sk].total+=priceDisc;
+    if(paid>sessions[sk].maxPaid) sessions[sk].maxPaid=paid;
+  });
+
+  // Sum up debts per patient
+  Object.values(sessions).forEach(function(sess){
+    var debt=sess.total-sess.maxPaid;
     if(debt>0){
-      if(!state_patientDebts[patId]) state_patientDebts[patId]=0;
-      // Avoid counting multiple items from same session multiple times
-      // Use item id as key since paid_amount is same for all items in session
-      // but we only want to count the debt once per session
-      if(!processed[it.id]){
-        processed[it.id]=true;
-        state_patientDebts[patId]+=debt;
-      }
+      if(!state_patientDebts[sess.patId]) state_patientDebts[sess.patId]=0;
+      state_patientDebts[sess.patId]+=debt;
     }
   });
 }
