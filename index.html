@@ -1282,12 +1282,56 @@ async function loadAll(){
     if(e2)throw e2;
     state.patients=patients||[];
     state.procedures=procedures||[];
+    await loadPatientDebts();
     updateStats();renderPatients();renderProcedures();renderPdfPatientSelect();populatePatientSelect();populateReceiptPatientSelect();
     await loadReminders();
   }catch(e){
     console.error('loadAll error:',e);
     showNotif('Eroare la încărcare: '+e.message,false);
   }
+}
+
+// Load partial payment debts for all patients
+var state_patientDebts={}; // patientId -> debt amount
+
+async function loadPatientDebts(){
+  state_patientDebts={};
+  // Get all done stage_items with partial payment
+  var{data:items}=await sb.from('stage_items')
+    .select('id,price,payment_status,paid_amount,receipt_deleted,stage_id')
+    .eq('done',true)
+    .eq('payment_status','partial')
+    .eq('receipt_deleted',false);
+  if(!items||!items.length) return;
+  // Get stage->patient mapping
+  var stageIds=[...new Set(items.map(function(it){return it.stage_id;}))];
+  var{data:stages}=await sb.from('stages').select('id,patient_id,discount').in('id',stageIds);
+  if(!stages) return;
+  var stageMap={};
+  stages.forEach(function(s){stageMap[s.id]=s;});
+  // Group by session (same as generateReceipt) and take MAX paid_amount per session
+  function sessKey(dt){var d=new Date(dt);var m=d.getMinutes()<30?0:30;return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate()+' '+d.getHours()+':'+m;}
+  // For each item, compute debt
+  var processed={};
+  items.forEach(function(it){
+    var stage=stageMap[it.stage_id];
+    if(!stage) return;
+    var patId=stage.patient_id;
+    var disc=stage.discount||0;
+    var priceDisc=Math.round((it.price||0)*(1-disc/100));
+    var paid=parseInt(it.paid_amount,10)||0;
+    var debt=priceDisc-paid;
+    if(debt>0){
+      if(!state_patientDebts[patId]) state_patientDebts[patId]=0;
+      // Avoid counting multiple items from same session multiple times
+      // Use item id as key since paid_amount is same for all items in session
+      // but we only want to count the debt once per session
+      if(!processed[it.id]){
+        processed[it.id]=true;
+        state_patientDebts[patId]+=debt;
+      }
+    }
+  });
 }
 
 async function loadStagesForPatient(patientId){
@@ -1323,12 +1367,19 @@ function renderPatients(){
   if(!list.length){document.getElementById('patient-list').innerHTML='<div style="color:#94a3b8;font-size:13px;padding:10px">Niciun pacient găsit.</div>';return;}
   document.getElementById('patient-list').innerHTML=list.map(function(p){
     var sel=p.id===state.selectedPatientId?' selected':'';
+    var debt=state_patientDebts[p.id]||0;
+    var debtHtml=debt>0
+      ?'<div style="margin-top:6px;padding:5px 8px;background:#fef2f2;border:1px solid #fca5a5;border-radius:6px;font-size:11px;font-weight:700;color:#dc2626;display:flex;align-items:center;gap:4px">'
+        +'<svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>'
+        +'Datorie: '+fmt(debt)+'</div>'
+      :'';
     return '<div class="patient-card'+sel+'" onclick="selectPatient(\''+p.id+'\')">'
       +'<div style="display:flex;align-items:start;justify-content:space-between;gap:6px">'
       +'<div style="flex:1;min-width:0">'
       +'<div style="font-weight:600;font-size:13px;color:#0c3560">'+esc(p.name)+'</div>'
       +'<div style="font-size:12px;color:#64748b;margin-top:2px">'+esc(p.phone||'—')+'</div>'
       +'<div style="font-size:12px;margin-top:8px"><strong>Diagnostic:</strong> '+esc(p.diagnosis||'—')+'</div>'
+      +debtHtml
       +'</div>'
       +'<button class="btn btn-danger" onclick="event.stopPropagation();deletePatient(\''+p.id+'\',\''+esc(p.name)+'\')" style="padding:3px 8px;font-size:11px;flex-shrink:0;margin-top:0">✕</button>'
       +'</div>'
@@ -2277,6 +2328,8 @@ async function setSessionPayment(sessionKey, status, amount){
     await sb.from('stage_items').update({payment_status:status,paid_amount:paid}).eq('id',sessItems[i].id);
   }
   showNotif(status==='paid'?'✓ Marcat ca achitat!':status==='unpaid'?'Marcat ca neachitat.':'Salvat parțial.');
+  await loadPatientDebts();
+  renderPatients();
   await generateReceipt();
 }
 
