@@ -190,9 +190,7 @@ tr:last-child td{border-bottom:none}
       <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0"/></svg>Notificări
       <span id="reminder-badge" class="hidden" style="position:absolute;top:6px;right:10px;background:#ef4444;color:#fff;font-size:10px;font-weight:700;border-radius:999px;padding:1px 6px;min-width:18px;text-align:center"></span>
     </button>
-    <button class="sidebar-btn" id="sbtn-remcat" onclick="switchTab('remcat')">
-      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="12" y2="16"/></svg>Catalog remindere
-    </button>
+
 
     <button class="sidebar-btn" id="sbtn-receipt" onclick="switchTab('receipt')">
       <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h4"/></svg>Bon de plată
@@ -250,7 +248,7 @@ tr:last-child td{border-bottom:none}
         🔔 Notificări
         <span id="reminder-badge-top" class="hidden" style="position:absolute;top:4px;right:6px;background:#ef4444;color:#fff;font-size:9px;font-weight:700;border-radius:999px;padding:1px 5px"></span>
       </button>
-      <button class="tab-btn" id="tab-btn-remcat" onclick="switchTab('remcat')">📋 Catalog remindere</button>
+
 
       <button class="tab-btn" id="tab-btn-receipt" onclick="switchTab('receipt')">🧾 Bon de plată</button>
     </div>
@@ -607,11 +605,12 @@ tr:last-child td{border-bottom:none}
         <div class="card" style="overflow-y:auto;max-height:85vh">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
             <div class="card-title" style="margin-bottom:0">Notificări active</div>
-            <div style="display:flex;gap:6px">
+            <div style="display:flex;gap:6px;flex-wrap:wrap">
               <button class="btn btn-sm" id="rem-filter-all" onclick="filterReminders('all')" style="font-size:11px;background:#0c3560;color:#fff;border-color:#0c3560">Toate</button>
               <button class="btn btn-sm" id="rem-filter-urgent" onclick="filterReminders('urgent')" style="font-size:11px">🔴 Expirate</button>
               <button class="btn btn-sm" id="rem-filter-soon" onclick="filterReminders('soon')" style="font-size:11px">🟡 7 zile</button>
               <button class="btn btn-sm" id="rem-filter-upcoming" onclick="filterReminders('upcoming')" style="font-size:11px">🟢 30 zile</button>
+              <button class="btn btn-sm" onclick="openRemcatModal()" style="font-size:11px;background:#f0fdf4;color:#166534;border-color:#86efac">📋 Catalog</button>
             </div>
           </div>
           <div id="reminders-list"><div class="loading">Se încarcă...</div></div>
@@ -647,19 +646,24 @@ tr:last-child td{border-bottom:none}
     </div>
 
     <!-- CATALOG REMINDERE -->
-    <div id="tab-remcat" class="tab-content">
-      <div class="two-col">
-        <div class="card">
-          <div class="card-title">Adaugă tip reminder</div>
-          <div class="card-sub">Extinde catalogul de tipuri</div>
-          <label>Denumire tip reminder</label>
-          <input id="remcat-new-name" placeholder="Ex: Igienizare la 6 luni, Control implant...">
-          <button class="btn btn-primary btn-full" onclick="addReminderType()" style="margin-top:10px">+ Adaugă tip</button>
+    <!-- REMCAT MODAL -->
+    <div id="remcat-modal" class="hidden" style="position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px" onclick="closeRemcatModal()">
+      <div style="background:#fff;border-radius:14px;width:100%;max-width:700px;max-height:85vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.3)" onclick="event.stopPropagation()">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 24px;border-bottom:1px solid #e2e8f0;flex-shrink:0">
+          <div style="font-size:16px;font-weight:700;color:#0c3560">📋 Catalog tipuri de remindere</div>
+          <button onclick="closeRemcatModal()" style="background:#f1f5f9;border:none;border-radius:8px;padding:6px 12px;cursor:pointer;font-size:13px;color:#64748b">✕ Închide</button>
         </div>
-        <div class="card">
-          <div class="card-title">Tipuri de remindere</div>
-          <div class="card-sub">Gestionează catalogul</div>
-          <div id="remcat-list"><div class="loading">Se încarcă...</div></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0;overflow:hidden;flex:1;min-height:0">
+          <div style="padding:20px;border-right:1px solid #e2e8f0;overflow-y:auto">
+            <div style="font-size:13px;font-weight:600;color:#0c3560;margin-bottom:12px">Adaugă tip nou</div>
+            <label>Denumire tip reminder</label>
+            <input id="remcat-new-name" placeholder="Ex: Igienizare la 6 luni, Control implant...">
+            <button class="btn btn-primary btn-full" onclick="addReminderType()" style="margin-top:10px">+ Adaugă tip</button>
+          </div>
+          <div style="padding:20px;overflow-y:auto">
+            <div style="font-size:13px;font-weight:600;color:#0c3560;margin-bottom:12px">Tipuri existente</div>
+            <div id="remcat-list"><div class="loading">Se încarcă...</div></div>
+          </div>
         </div>
       </div>
     </div>
@@ -1955,7 +1959,6 @@ function switchTab(tab){
   var sb2=document.getElementById('sbtn-'+tab);if(sb2)sb2.classList.add('active');
   if(tab==='procedures')renderProcedures();
   if(tab==='reminders'){populateReminderPatientSelect();loadReminders();}
-  if(tab==='remcat'){loadReminderTypes();}
 }
 
 // ---- DOCUMENTE + OBSERVATII ----
@@ -2677,6 +2680,17 @@ function renderPdfPreviewWithCurrentLang(){
   var lang=document.getElementById('pdf-lang')?document.getElementById('pdf-lang').value:'ro';
   if(pdfType==='patient') renderPdfPreviewPatient(lang);
   else renderPdfPreviewWithLang(lang);
+}
+
+function openRemcatModal(){
+  var modal=document.getElementById('remcat-modal');
+  modal.classList.remove('hidden');modal.style.display='flex';
+  loadReminderTypes();
+}
+
+function closeRemcatModal(){
+  var modal=document.getElementById('remcat-modal');
+  modal.classList.add('hidden');modal.style.display='none';
 }
 
 // ---- SCHIMBARE PAROLA ----
