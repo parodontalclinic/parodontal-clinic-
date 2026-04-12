@@ -1183,16 +1183,14 @@ async function addAllToplan(){
   for(var c of cart){
     var patType=c.patType||'adult';
     var arch=c.arch||'';
-    var variant=(document.getElementById('sel-variant')||{}).value||'';
-    state.activeVariantId=variant||state.activeVariantId;
     if(c.teeth.length===0){
-      var obj={stage_id:stageId,name:c.proc.name,price:c.proc.price,category:c.proc.category,explanation:'',patient_type:patType,arch:arch,variant:variant};
+      var obj={stage_id:stageId,name:c.proc.name,price:c.proc.price,category:c.proc.category,explanation:'',patient_type:patType,arch:arch};
       var{data,error}=await sb.from('stage_items').insert([obj]).select().single();
       if(!error){if(!state.stageItems[stageId])state.stageItems[stageId]=[];state.stageItems[stageId].push(data);added++;}
     } else {
       for(var tooth of c.teeth){
         var name=c.proc.name+' (d.'+tooth+')';
-        var obj2={stage_id:stageId,name:name,price:c.proc.price,category:c.proc.category,explanation:'',patient_type:patType,arch:arch,variant:variant};
+        var obj2={stage_id:stageId,name:name,price:c.proc.price,category:c.proc.category,explanation:'',patient_type:patType,arch:arch};
         var{data:d2,error:e2}=await sb.from('stage_items').insert([obj2]).select().single();
         if(!e2){if(!state.stageItems[stageId])state.stageItems[stageId]=[];state.stageItems[stageId].push(d2);added++;}
       }
@@ -1431,7 +1429,7 @@ function closeTreatmentModal(){
 }
 
 async function selectPatient(id){
-  state.selectedPatientId=id;state.activeStageId=null;state.stages=[];state.stageItems={};state.doneItems={};state.activeVariantId=null;
+  state.selectedPatientId=id;state.activeStageId=null;state.stages=[];state.stageItems={};state.doneItems={};
   await loadStagesForPatient(id);
   renderPatients();renderTreatment();updateStats();
   await loadInlineDocs(id);
@@ -1497,64 +1495,14 @@ function onProcedureChange(){
 
 function renderStageSelect(){
   var sel=document.getElementById('sel-stage');
-  var varStages=state.activeVariantId
-    ?state.stages.filter(function(s){return s.variant_id===state.activeVariantId;})
-    :state.stages.filter(function(s){return !s.variant_id;});
   sel.innerHTML='<option value="">— Selectează etapă —</option>'
-    +varStages.map(function(s){return'<option value="'+s.id+'"'+(s.id===state.activeStageId?' selected':'')+'>'+esc(s.name)+'</option>';}).join('');
+    +state.stages.map(function(s){return'<option value="'+s.id+'"'+(s.id===state.activeStageId?' selected':'')+'>'+esc(s.name)+'</option>';}).join('');
 }
 
-function renderVariantSelect(){
-  var sel=document.getElementById('sel-variant');
-  if(!sel) return;
-  sel.innerHTML='<option value="">— Fără variantă —</option>'
-    +state.variants.map(function(v){
-      return'<option value="'+v.id+'"'+(v.id===state.activeVariantId?' selected':'')+'>'+esc(v.name)+'</option>';
-    }).join('');
-  if(state.activeVariantId) sel.value=state.activeVariantId;
-}
 
-function onVariantChange(){
-  var sel=document.getElementById('sel-variant');
-  var vid=sel?sel.value:'';
-  state.activeVariantId=vid||null;
-  state.activeStageId=null;
-  // Set first stage of this variant as active
-  var varStages=state.stages.filter(function(s){return s.variant_id===state.activeVariantId;});
-  if(varStages.length>0) state.activeStageId=varStages[0].id;
-  renderTreatment();
-}
-
-async function addVariant(){
-  if(!state.selectedPatientId){showNotif('Selectează mai întâi un pacient!',false);return;}
-  var name=prompt('Denumire variantă (ex: Varianta 1, Plan A, Variantă economică...):');
-  if(!name||!name.trim()) return;
-  name=name.trim();
-  var pos=state.variants.length;
-  var{data,error}=await sb.from('variants').insert([{patient_id:state.selectedPatientId,name:name,position:pos}]).select().single();
-  if(error){showNotif('Eroare: '+error.message,false);return;}
-  state.variants.push(data);
-  state.activeVariantId=data.id;
-  state.activeStageId=null;
-  renderTreatment();
-  showNotif('✓ Variantă adăugată: '+name);
-}
-
-async function deleteVariant(variantId){
-  var v=state.variants.find(function(v){return v.id===variantId;});
-  if(!v||!confirm('Ștergi varianta "'+v.name+'" și toate etapele ei?')) return;
-  var{error}=await sb.from('variants').delete().eq('id',variantId);
-  if(error){showNotif('Eroare: '+error.message,false);return;}
-  state.variants=state.variants.filter(function(v){return v.id!==variantId;});
-  state.stages=state.stages.filter(function(s){return s.variant_id!==variantId;});
-  state.activeVariantId=state.variants.length>0?state.variants[0].id:null;
-  state.activeStageId=null;
-  renderTreatment();
-  showNotif('Variantă ștearsă.');
-}
 
 function renderTreatment(){
-  populatePatientSelect();renderStageSelect();renderVariantSelect();
+  populatePatientSelect();renderStageSelect();
   var pat=getPat();
   var doctor=getDoctor();
   document.getElementById('plan-patient-name').innerHTML=pat
@@ -1582,93 +1530,13 @@ function renderTreatment(){
     if(docsSection) docsSection.classList.add('hidden');
     if(pdfBtnSection) pdfBtnSection.classList.add('hidden');
   }
-  if(!state.selectedPatientId){
-    document.getElementById('stages-editor').innerHTML='<div class="loading">Selectează un pacient pentru a începe</div>';
+  if(!state.selectedPatientId||!state.stages.length){
+    document.getElementById('stages-editor').innerHTML='<div class="loading">'+(state.selectedPatientId?'Nicio etapă — apasă "+ Adaugă etapă nouă"':'Selectează un pacient pentru a începe')+'</div>';
     document.getElementById('grand-total-editor').classList.add('hidden');
     return;
   }
-
-  // Determine which stages to show
-  var hasVariants=state.variants.length>0;
-  var activeVid=state.activeVariantId;
-  var stagesToShow=hasVariants
-    ?(activeVid?state.stages.filter(function(s){return s.variant_id===activeVid;}):[] )
-    :state.stages;
-
-  // If only 1 variant exists, show it directly without variant boxes
-  var showVariantBoxes=state.variants.length>1;
-
-  if(!stagesToShow.length&&!showVariantBoxes){
-    document.getElementById('stages-editor').innerHTML='<div class="loading">Nicio etapă — apasă "+ Adaugă etapă nouă"</div>';
-    document.getElementById('grand-total-editor').classList.add('hidden');
-    return;
-  }
-
   document.getElementById('grand-total-editor').classList.remove('hidden');
-
-  // Render variant boxes if multiple variants
-  if(showVariantBoxes){
-    var varBoxes=state.variants.map(function(v){
-      var vStages=state.stages.filter(function(s){return s.variant_id===v.id;});
-      var vTotal=vStages.reduce(function(a,s){
-        var d=s.discount||0;var st=stTotal(state.stageItems[s.id]||[]);
-        return a+Math.round(st*(1-d/100));
-      },0);
-      var isActive=v.id===activeVid;
-      return '<div style="border:2px solid '+(isActive?'#0c3560':'#e2e8f0')+';border-radius:12px;padding:14px;margin-bottom:10px;background:'+(isActive?'#eff6ff':'#fff')+'">'
-        +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:6px">'
-        +'<div style="font-weight:700;font-size:14px;color:#0c3560">'+esc(v.name)+'</div>'
-        +'<div style="display:flex;align-items:center;gap:6px">'
-        +'<span style="font-size:13px;font-weight:600;color:#0369a1">'+fmt(vTotal)+'</span>'
-        +(isActive
-          ?'<span style="font-size:11px;background:#0c3560;color:#fff;padding:2px 8px;border-radius:999px">Activă</span>'
-          :'<button class="btn btn-primary" onclick="switchVariant(\''+v.id+'\')" style="font-size:11px;padding:3px 10px">Selectează</button>')
-        +'<button class="btn btn-danger" onclick="deleteVariant(\''+v.id+'\')" style="font-size:11px;padding:3px 8px">✕</button>'
-        +'</div></div>'
-        +(isActive&&vStages.length?'<div style="font-size:12px;color:#64748b">'+vStages.length+' etape</div>':'')
-        +(isActive?'<hr style="border:none;border-top:1px solid #e2e8f0;margin:10px 0">'+renderStagesHtml(vStages):'')
-        +'</div>';
-    }).join('');
-    document.getElementById('stages-editor').innerHTML=varBoxes;
-    renderGrandTotal();
-    return;
-  }
-
-  document.getElementById('stages-editor').innerHTML=renderStagesHtml(stagesToShow);
-  renderGrandTotal();
-}
-
-function renderGrandTotal(){
-  var gt=grandTotal();
-  var gtWithDisc=state.stages.reduce(function(a,s){
-    var d=s.discount||0;var st=stTotal(state.stageItems[s.id]||[]);
-    return a+Math.round(st*(1-d/100));
-  },0);
-  var hasAnyDisc=state.stages.some(function(s){return (s.discount||0)>0;});
-  var gtEl=document.getElementById('grand-total-editor');
-  if(hasAnyDisc){
-    gtEl.innerHTML='<div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;padding-top:14px;border-top:1px solid #e2e8f0">'
-      +'<div style="font-size:13px;color:#64748b">Total fără reducere: <span style="font-weight:600;text-decoration:line-through">'+fmt(gt)+'</span></div>'
-      +'<div style="font-size:18px;font-weight:700;color:#16a34a">Total cu reducere: '+fmt(gtWithDisc)+'</div>'
-      +'</div>';
-  } else {
-    gtEl.textContent='Total general: '+fmt(gt);
-  }
-}
-
-function switchVariant(variantId){
-  state.activeVariantId=variantId;
-  state.activeStageId=null;
-  var varStages=state.stages.filter(function(s){return s.variant_id===variantId;});
-  if(varStages.length>0) state.activeStageId=varStages[0].id;
-  var sel=document.getElementById('sel-variant');
-  if(sel) sel.value=variantId;
-  renderTreatment();
-}
-
-function renderStagesHtml(stagesToRender){
-  if(!stagesToRender.length) return '<div style="color:#94a3b8;font-size:12px;padding:6px 0">Nicio etapă. Apasă "+ Adaugă etapă nouă".</div>';
-  return stagesToRender.map(function(stage){
+  document.getElementById('stages-editor').innerHTML=state.stages.map(function(stage){
     var items=state.stageItems[stage.id]||[];
     var disc=stage.discount||0;
     var groups=groupItemsByArch(items);
@@ -1680,7 +1548,6 @@ function renderStagesHtml(stagesToRender){
         var done=!!state.doneItems[item.id];
         var doneAt=item.done_at?new Date(item.done_at).toLocaleString('ro-RO',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}):'';
         var doneBy=item.done_by||'';
-        var variantBadge=item.variant?'<span style="font-size:10px;background:#f3e8ff;color:#7c3aed;padding:1px 6px;border-radius:4px;font-weight:600;margin-left:4px">'+esc(item.variant)+'</span>':'';
         var doneInfo=done
           ?'<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:4px">'
             +(doneAt?'<span style="font-size:10px;color:#16a34a;font-weight:500">✓ '+doneAt+'</span>':'')
@@ -1696,7 +1563,7 @@ function renderStagesHtml(stagesToRender){
           +'<div class="item-check'+(done?' checked':'')+'" onclick="toggleDone(\''+item.id+'\')" style="margin-top:2px">'
           +'<svg viewBox="0 0 14 14" fill="none" stroke="#fff" stroke-width="2.5"><polyline points="2,7 6,11 12,3"/></svg>'
           +'</div>'
-          +'<div class="item-name"><div>'+esc(item.name)+variantBadge+'</div>'+doneInfo+'</div>'
+          +'<div class="item-name"><div>'+esc(item.name)+'</div>'+doneInfo+'</div>'
           +'<div class="item-price" style="padding-top:2px">'            +(done              ?'<span style="font-size:13px;color:#0c3560;font-weight:600">'+fmt(item.price||0)+'</span>'              :'<input type="number" value="'+(item.price||0)+'" min="0" step="50"'               +' oninput="previewItemPrice(\''+item.id+'\',this.value)"'               +' onchange="updateItemPrice(\''+item.id+'\',this.value)"'               +' style="width:90px;text-align:right;font-size:12px;font-weight:600;color:#0c3560;border:1px solid #bae6fd;border-radius:6px;padding:3px 6px;background:#eff6ff;outline:none">'            )+'</div>'          +'<button class="btn btn-danger" onclick="removeItem(\''+stage.id+'\',\''+item.id+'\')" style="padding:4px 10px;font-size:11px;margin-top:2px">Șterge</button>'
           +'</div>';
       }).join('');
@@ -1707,6 +1574,21 @@ function renderStagesHtml(stagesToRender){
     for(var d2=1;d2<=20;d2++) discOpts+='<option value="'+d2+'"'+(disc===d2?' selected':'')+'>'+d2+'%</option>';
     return '<div class="stage-block">'      +'<div class="stage-header">'      +'<div style="font-weight:600;color:#0c3560;font-size:14px">'+esc(stage.name)+'</div>'      +'<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">'      +'<select style="font-size:12px;padding:3px 6px;border-radius:6px;border:1px solid #e2e8f0;color:#0c3560;width:auto;cursor:pointer" onchange="saveStageDiscount(\''+stage.id+'\',this.value)">'+discOpts+'</select>'      +'<span class="stage-badge-total" data-sid="'+stage.id+'">'      +(disc>0        ?'<span style="font-size:12px;color:#94a3b8;text-decoration:line-through">'+fmt(stTot)+'</span>'         +' <span style="background:#dcfce7;color:#16a34a;font-weight:700;font-size:13px;padding:4px 10px;border-radius:8px;border:1px solid #86efac">'+fmt(stTotDisc)+'</span>'        :'<span style="background:#e0f2fe;color:#0369a1;font-weight:700;font-size:13px;padding:4px 10px;border-radius:8px;border:1px solid #bae6fd">'+fmt(stTot)+'</span>')      +'</span>'      +'<button class="btn btn-danger" onclick="deleteStage(\''+stage.id+'\')" style="padding:4px 10px;font-size:11px">Șterge etapă</button>'      +'</div></div>'+itemsHtml+'</div>';
     }).join('');
+  var gt=grandTotal();
+  var gtWithDisc=state.stages.reduce(function(a,s){
+    var d=s.discount||0;var st=stTotal(state.stageItems[s.id]||[]);
+    return a+Math.round(st*(1-d/100));
+  },0);
+  var hasAnyDisc=state.stages.some(function(s){return (s.discount||0)>0;});
+  var gtEl=document.getElementById('grand-total-editor');
+  if(hasAnyDisc){
+    gtEl.innerHTML='<div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;padding-top:14px;border-top:1px solid #e2e8f0">'
+      +'<div style="font-size:13px;color:#64748b">Total fără reducere: <span style="font-weight:600;text-decoration:line-through">'+fmt(gt)+'</span></div>'
+      +'<div style="font-size:18px;font-weight:700;color:#16a34a">Total cu reducere: '+fmt(gtWithDisc)+'</div>'
+      +'</div>';
+  } else {
+    gtEl.textContent='Total general: '+fmt(gt);
+  }
 }
 
 async function syncDoctor(){
@@ -1864,9 +1746,7 @@ async function deleteStage(stageId){
 
 async function addStage(){
   if(!state.selectedPatientId){showNotif('Selectează mai întâi un pacient!',false);return;}
-  var variantId=state.activeVariantId||null;
-  var varStages=variantId?state.stages.filter(function(s){return s.variant_id===variantId;}):state.stages;
-  var obj={patient_id:state.selectedPatientId,name:'Etapa '+(varStages.length+1),position:varStages.length,variant_id:variantId};
+  var obj={patient_id:state.selectedPatientId,name:'Etapa '+(state.stages.length+1),position:state.stages.length};
   var{data,error}=await sb.from('stages').insert([obj]).select().single();
   if(error){showNotif('Eroare: '+error.message,false);return;}
   state.stages.push(data);state.stageItems[data.id]=[];state.activeStageId=data.id;
