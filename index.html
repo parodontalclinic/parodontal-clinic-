@@ -194,6 +194,9 @@ tr:last-child td{border-bottom:none}
       <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0"/></svg>Notificări
       <span id="reminder-badge" class="hidden" style="position:absolute;top:6px;right:10px;background:#ef4444;color:#fff;font-size:10px;font-weight:700;border-radius:999px;padding:1px 6px;min-width:18px;text-align:center"></span>
     </button>
+    <button class="sidebar-btn" id="sbtn-remcat" onclick="switchTab('remcat')">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="12" y2="16"/></svg>Catalog remindere
+    </button>
 
     <button class="sidebar-btn" id="sbtn-receipt" onclick="switchTab('receipt')">
       <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h4"/></svg>Bon de plată
@@ -253,6 +256,7 @@ tr:last-child td{border-bottom:none}
         🔔 Notificări
         <span id="reminder-badge-top" class="hidden" style="position:absolute;top:4px;right:6px;background:#ef4444;color:#fff;font-size:9px;font-weight:700;border-radius:999px;padding:1px 5px"></span>
       </button>
+      <button class="tab-btn" id="tab-btn-remcat" onclick="switchTab('remcat')">📋 Catalog remindere</button>
 
       <button class="tab-btn" id="tab-btn-receipt" onclick="switchTab('receipt')">🧾 Bon de plată</button>
     </div>
@@ -544,13 +548,7 @@ tr:last-child td{border-bottom:none}
 
           <label>Tip reminder</label>
           <select id="rem-type">
-            <option value="Igienizare profesională">Igienizare profesională</option>
-            <option value="Control parodontal">Control parodontal</option>
-            <option value="Continuare tratament">Continuare tratament</option>
-            <option value="Control radiologic">Control radiologic</option>
-            <option value="Detartraj">Detartraj</option>
-            <option value="Consultație de urmărire">Consultație de urmărire</option>
-            <option value="Altele">Altele...</option>
+            <option value="">— Selectează tipul —</option>
           </select>
 
           <label>Interval</label>
@@ -618,6 +616,24 @@ tr:last-child td{border-bottom:none}
             <button class="btn btn-primary" onclick="confirmReschedule()" style="flex:1">Reprogramează</button>
             <button class="btn" onclick="closeRescheduleModal()" style="flex:1">Anulează</button>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CATALOG REMINDERE -->
+    <div id="tab-remcat" class="tab-content">
+      <div class="two-col">
+        <div class="card">
+          <div class="card-title">Adaugă tip reminder</div>
+          <div class="card-sub">Extinde catalogul de tipuri</div>
+          <label>Denumire tip reminder</label>
+          <input id="remcat-new-name" placeholder="Ex: Igienizare la 6 luni, Control implant...">
+          <button class="btn btn-primary btn-full" onclick="addReminderType()" style="margin-top:10px">+ Adaugă tip</button>
+        </div>
+        <div class="card">
+          <div class="card-title">Tipuri de remindere</div>
+          <div class="card-sub">Gestionează catalogul</div>
+          <div id="remcat-list"><div class="loading">Se încarcă...</div></div>
         </div>
       </div>
     </div>
@@ -1186,6 +1202,7 @@ function showApp(){
   if(tbLogo) tbLogo.src=LOGO_B64;
   buildTeethGrid();
   loadAll();
+  loadReminderTypes();
   startRealtimeSync();
 }
 
@@ -1894,7 +1911,7 @@ function switchTab(tab){
   if(tab==='pdf'){renderPdfPatientSelect();renderPdfPreview();}
   if(tab==='procedures')renderProcedures();
   if(tab==='reminders'){populateReminderPatientSelect();loadReminders();}
-  
+  if(tab==='remcat'){loadReminderTypes();}
 }
 
 // ---- DOCUMENTE + OBSERVATII ----
@@ -2274,6 +2291,71 @@ function printReceiptSession(patId,sessionKey,bonNr){
   w.document.close();w.focus();setTimeout(function(){w.print();},600);
 }
 // ---- END BON DE PLATA ----
+
+// ---- CATALOG REMINDERE ----
+// ---- END CATALOG REMINDERE ----
+var state_reminderTypes=[];
+
+async function loadReminderTypes(){
+  var{data,error}=await sb.from('reminder_types').select('*').order('position').order('name');
+  state_reminderTypes=(data||[]);
+  populateReminderTypeSelect();
+  renderRemcatList();
+}
+
+function populateReminderTypeSelect(){
+  var sel=document.getElementById('rem-type');
+  if(!sel) return;
+  var cur=sel.value;
+  sel.innerHTML='<option value="">— Selectează tipul —</option>'
+    +state_reminderTypes.map(function(t){
+      return'<option value="'+esc(t.name)+'"'+(cur===t.name?' selected':'')+'>'+esc(t.name)+'</option>';
+    }).join('');
+}
+
+function renderRemcatList(){
+  var el=document.getElementById('remcat-list');
+  if(!el) return;
+  if(!state_reminderTypes.length){
+    el.innerHTML='<div style="color:#94a3b8;font-size:13px;padding:10px">Niciun tip adăugat.</div>';
+    return;
+  }
+  el.innerHTML='<table style="width:100%;border-collapse:collapse">'
+    +'<thead><tr><th style="padding:7px 10px;background:#f1f5f9;text-align:left;font-size:12px;color:#475569">Tip reminder</th><th style="width:60px"></th></tr></thead>'
+    +'<tbody>'
+    +state_reminderTypes.map(function(t){
+      return '<tr style="border-top:1px solid #f1f5f9">'
+        +'<td style="padding:8px 10px;font-size:13px">'+esc(t.name)+'</td>'
+        +'<td style="padding:4px 8px;text-align:right">'
+        +'<button class="btn btn-danger" onclick="deleteReminderType(\''+t.id+'\')" style="padding:3px 8px;font-size:11px">✕</button>'
+        +'</td></tr>';
+    }).join('')
+    +'</tbody></table>';
+}
+
+async function addReminderType(){
+  var input=document.getElementById('remcat-new-name');
+  var name=input.value.trim();
+  if(!name){showNotif('Introdu denumirea tipului!',false);return;}
+  if(state_reminderTypes.find(function(t){return t.name===name;})){
+    showNotif('Tipul există deja!',false);return;
+  }
+  var pos=state_reminderTypes.length+1;
+  var{error}=await sb.from('reminder_types').insert([{name:name,position:pos}]);
+  if(error){showNotif('Eroare: '+error.message,false);return;}
+  input.value='';
+  await loadReminderTypes();
+  showNotif('✓ Tip adăugat!');
+}
+
+async function deleteReminderType(id){
+  var t=state_reminderTypes.find(function(t){return t.id===id;});
+  if(!t||!confirm('Ștergi tipul "'+t.name+'"?')) return;
+  var{error}=await sb.from('reminder_types').delete().eq('id',id);
+  if(error){showNotif('Eroare: '+error.message,false);return;}
+  await loadReminderTypes();
+  showNotif('Tip șters.');
+}
 
 // ---- REMINDERS ----
 var state_reminders=[];
