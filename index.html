@@ -1336,6 +1336,7 @@ async function selectPatient(id){
   await loadStagesForPatient(id);
   renderPatients();renderTreatment();updateStats();
   await loadInlineDocs(id);
+  switchTab('treatment');
 }
 
 async function addPatient(){
