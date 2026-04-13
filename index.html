@@ -1297,11 +1297,11 @@ var state_patientDebts={}; // patientId -> debt amount
 
 async function loadPatientDebts(){
   state_patientDebts={};
-  // Get ALL done stage_items (filter partial in JS to handle null receipt_deleted)
+  // Get ALL done stage_items with partial OR unpaid status
   var{data:items}=await sb.from('stage_items')
     .select('id,price,payment_status,paid_amount,receipt_deleted,stage_id,done_at')
     .eq('done',true)
-    .eq('payment_status','partial');
+    .in('payment_status',['partial','unpaid']);
   if(!items||!items.length) return;
 
   // Filter out deleted receipts (null counts as not deleted)
@@ -1323,7 +1323,7 @@ async function loadPatientDebts(){
     return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate()+' '+d.getHours()+':'+m;
   }
 
-  var sessions={}; // "patId|sessKey" -> {total, maxPaid, disc}
+  var sessions={};
   items.forEach(function(it){
     var stage=stageMap[it.stage_id];
     if(!stage) return;
