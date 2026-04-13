@@ -461,9 +461,9 @@ tr:last-child td{border-bottom:none}
           <!-- Setari -->
           <div style="padding:20px;border-right:1px solid #e2e8f0;overflow-y:auto">
             <label>Pacient</label>
-            <select id="pdf-patient-sel" onchange="onPdfPatientChange()">
-              <option value="">— Selectează pacient —</option>
-            </select>
+            <input id="pdf-patient-sel-input" list="pdf-patient-list" placeholder="Caută sau alege pacient..." oninput="onPdfPatientInput()" style="width:100%;border:1px solid #e2e8f0;border-radius:8px;padding:8px 10px;font-size:13px;outline:none">
+            <datalist id="pdf-patient-list"></datalist>
+            <input type="hidden" id="pdf-patient-sel" value="">
             <label>Nume clinică</label>
             <input id="clinic-name" value="Parodontal Clinic" oninput="renderPdfPreview()">
             <label>Telefon</label>
@@ -567,9 +567,9 @@ tr:last-child td{border-bottom:none}
           <div class="card-sub">Setează o notificare automată pentru pacient</div>
 
           <label>Pacient</label>
-          <select id="rem-patient-sel" onchange="onReminderPatientChange()">
-            <option value="">— Selectează pacient —</option>
-          </select>
+          <input id="rem-patient-sel-input" list="rem-patient-list" placeholder="Caută sau alege pacient..." oninput="onReminderPatientInput()" style="width:100%;border:1px solid #e2e8f0;border-radius:8px;padding:8px 10px;font-size:13px;outline:none">
+          <datalist id="rem-patient-list"></datalist>
+          <input type="hidden" id="rem-patient-sel" value="">
 
           <label>Tip reminder</label>
           <select id="rem-type">
@@ -678,9 +678,9 @@ tr:last-child td{border-bottom:none}
           <div class="card-sub">Bonurile se generează automat din procedurile bifate</div>
 
           <label>Pacient</label>
-          <select id="receipt-patient-sel" onchange="generateReceipt()">
-            <option value="">— Selectează pacient —</option>
-          </select>
+          <input id="receipt-patient-sel-input" list="receipt-patient-list" placeholder="Caută sau alege pacient..." oninput="onReceiptPatientInput()" style="width:100%;border:1px solid #e2e8f0;border-radius:8px;padding:8px 10px;font-size:13px;outline:none">
+          <datalist id="receipt-patient-list"></datalist>
+          <input type="hidden" id="receipt-patient-sel" value="">
 
           <div id="receipt-info" class="hidden" style="margin-top:14px;padding:12px;background:#f0fdf4;border:1px solid #86efac;border-radius:8px;font-size:12px;color:#166534">
             Bonurile sunt grupate automat după data și ora bifării procedurilor.
@@ -1455,9 +1455,23 @@ function populatePatientSelect(){
 }
 
 function renderPdfPatientSelect(){
-  var sel=document.getElementById('pdf-patient-sel');
-  sel.innerHTML='<option value="">— Selectează pacient —</option>'
-    +state.patients.map(function(p){return'<option value="'+p.id+'">'+esc(p.name)+'</option>';}).join('');
+  var dl=document.getElementById('pdf-patient-list');
+  if(dl) dl.innerHTML=state.patients.map(function(p){return'<option value="'+esc(p.name)+'"></option>';}).join('');
+  // Restore input text if hidden has value
+  var hid=document.getElementById('pdf-patient-sel');
+  var inp=document.getElementById('pdf-patient-sel-input');
+  if(hid&&hid.value&&inp&&!inp.value){
+    var pat=state.patients.find(function(p){return p.id===hid.value;});
+    if(pat) inp.value=pat.name;
+  }
+}
+
+function onPdfPatientInput(){
+  var inp=document.getElementById('pdf-patient-sel-input').value.trim();
+  var pat=state.patients.find(function(p){return p.name.toLowerCase()===inp.toLowerCase();});
+  var hid=document.getElementById('pdf-patient-sel');
+  if(pat){hid.value=pat.id;onPdfPatientChange();}
+  else hid.value='';
 }
 
 async function onSelectPatient(){
@@ -2138,12 +2152,23 @@ function closeDocModal(){
 
 // ---- BON DE PLATA ----
 function populateReceiptPatientSelect(){
-  var sel=document.getElementById('receipt-patient-sel');
-  if(!sel)return;
-  var cur=sel.value;
-  sel.innerHTML='<option value="">— Selectează pacient —</option>'
-    +state.patients.map(function(p){return'<option value="'+p.id+'">'+esc(p.name)+'</option>';}).join('');
-  if(cur)sel.value=cur;
+  var dl=document.getElementById('receipt-patient-list');
+  if(dl) dl.innerHTML=state.patients.map(function(p){return'<option value="'+esc(p.name)+'"></option>';}).join('');
+  // Restore input text if hidden has value
+  var hid=document.getElementById('receipt-patient-sel');
+  var inp=document.getElementById('receipt-patient-sel-input');
+  if(hid&&hid.value&&inp&&!inp.value){
+    var pat=state.patients.find(function(p){return p.id===hid.value;});
+    if(pat) inp.value=pat.name;
+  }
+}
+
+function onReceiptPatientInput(){
+  var inp=document.getElementById('receipt-patient-sel-input').value.trim();
+  var pat=state.patients.find(function(p){return p.name.toLowerCase()===inp.toLowerCase();});
+  var hid=document.getElementById('receipt-patient-sel');
+  if(pat){hid.value=pat.id;generateReceipt();}
+  else hid.value='';
 }
 
 async function generateReceipt(){
@@ -2491,10 +2516,23 @@ function setPdfType(type){
 }
 
 function populateReminderPatientSelect(){
-  var sel=document.getElementById('rem-patient-sel');
-  if(!sel)return;
-  sel.innerHTML='<option value="">— Selectează pacient —</option>'
-    +state.patients.map(function(p){return'<option value="'+p.id+'">'+esc(p.name)+'</option>';}).join('');
+  var dl=document.getElementById('rem-patient-list');
+  if(dl) dl.innerHTML=state.patients.map(function(p){return'<option value="'+esc(p.name)+'"></option>';}).join('');
+  // Restore input text if hidden has value
+  var hid=document.getElementById('rem-patient-sel');
+  var inp=document.getElementById('rem-patient-sel-input');
+  if(hid&&hid.value&&inp&&!inp.value){
+    var pat=state.patients.find(function(p){return p.id===hid.value;});
+    if(pat) inp.value=pat.name;
+  }
+}
+
+function onReminderPatientInput(){
+  var inp=document.getElementById('rem-patient-sel-input').value.trim();
+  var pat=state.patients.find(function(p){return p.name.toLowerCase()===inp.toLowerCase();});
+  var hid=document.getElementById('rem-patient-sel');
+  if(pat){hid.value=pat.id;onReminderPatientChange();}
+  else hid.value='';
 }
 
 function onReminderPatientChange(){
