@@ -1904,13 +1904,13 @@ function renderPdfPreviewPatient(lang){
       var qty=g.teeth.length||1;
       var total=g.price*qty;
       var teethStr=g.teeth.length?'D'+g.teeth.join(', '):'';
-      var priceStr=qty>1?qty+'×'+g.price+' = '+total:String(total);
+      var priceStr=qty>1?qty+'×'+fmtCurrency(g.price)+' = '+fmtCurrency(total):fmtCurrency(total);
       return '<div style="padding:4px 0;border-bottom:1px solid #f1f5f9;display:flex;gap:8px;align-items:baseline">'
         +'<span style="color:#94a3b8;font-size:11px;min-width:20px">'+(startIdx+i+1)+'.</span>'
         +'<span style="flex:1;font-size:13px"><u>'+esc(g.base)+'</u>'
         +(teethStr?' <span style="font-size:12px;color:#475569">'+esc(teethStr)+'</span>':'')
         +'</span>'
-        +'<span style="font-size:13px;font-weight:600;color:#0c3560;white-space:nowrap">'+priceStr+' MDL</span>'
+        +'<span style="font-size:13px;font-weight:600;color:#0c3560;white-space:nowrap">'+priceStr+'</span>'
         +'</div>';
     }).join('');
   }
@@ -1938,10 +1938,10 @@ function renderPdfPreviewPatient(lang){
 
     var stageTotal='<div style="text-align:right;padding:8px 0 0;font-size:13px;font-weight:700;color:#0c3560">'
       +(disc>0
-        ?'<span style="text-decoration:line-through;color:#94a3b8;font-weight:400;margin-right:8px">'+stTot+' MDL</span>'
+        ?'<span style="text-decoration:line-through;color:#94a3b8;font-weight:400;margin-right:8px">'+fmtCurrency(stTot)+'</span>'
          +'<span style="background:#dc2626;color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:999px;margin-right:6px">-'+disc+'%</span>'
-         +t.stageTotal+': '+stTotDisc+' MDL'
-        :t.stageTotal+': '+stTot+' MDL')
+         +t.stageTotal+': '+fmtCurrency(stTotDisc)
+        :t.stageTotal+': '+fmtCurrency(stTot))
       +'</div>';
 
     return '<div style="margin-bottom:20px">'
@@ -1954,8 +1954,8 @@ function renderPdfPreviewPatient(lang){
   var grandTotalHtml='<div style="margin-top:16px;padding:12px 16px;background:#0c3560;border-radius:8px;display:flex;justify-content:space-between;align-items:center">'
     +'<span style="color:#fff;font-weight:700;font-size:15px">'+t.grandTotal+'</span>'
     +(hasAnyDisc
-      ?'<span style="color:#fff"><span style="text-decoration:line-through;opacity:0.6;margin-right:10px">'+gt+' MDL</span><span style="font-size:18px;font-weight:700">'+gtWithDisc+' MDL</span></span>'
-      :'<span style="color:#fff;font-size:18px;font-weight:700">'+gt+' MDL</span>')
+      ?'<span style="color:#fff"><span style="text-decoration:line-through;opacity:0.6;margin-right:10px">'+fmtCurrency(gt)+'</span><span style="font-size:18px;font-weight:700">'+fmtCurrency(gtWithDisc)+'</span></span>'
+      :'<span style="color:#fff;font-size:18px;font-weight:700">'+fmtCurrency(gt)+'</span>')
     +'</div>';
 
   var html='<div style="font-family:serif;padding:20px;background:#fff;border:1px solid #e2e8f0;border-radius:12px">'
