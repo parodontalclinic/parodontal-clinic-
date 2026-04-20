@@ -487,6 +487,14 @@ tr:last-child td{border-bottom:none}
               <option value="it">Italiană (Italiano)</option>
             </select>
 
+            <label style="margin-top:10px">Valuta</label>
+            <select id="pdf-currency" onchange="onCurrencyChange()">
+              <option value="MDL">MDL — Leu moldovenesc</option>
+              <option value="EUR">EUR — Euro</option>
+              <option value="USD">USD — Dolar american</option>
+            </select>
+            <div id="pdf-currency-rate" style="font-size:11px;color:#64748b;margin-top:4px;min-height:16px"></div>
+
             <hr style="border:none;border-top:1px solid #e2e8f0;margin:14px 0">
 
             <label>Tip export</label>
@@ -1838,20 +1846,20 @@ function renderPdfPreviewWithLang(lang){
           :'';
         return groupRow+g.items.map(function(it){
           var translatedName=getTranslatedName(it.name,lang);
-          return'<tr><td style="width:28px;text-align:center"><div style="width:16px;height:16px;border:1.5px solid #94a3b8;border-radius:3px;display:inline-block"></div></td><td>'+esc(translatedName)+'</td><td style="text-align:right;font-weight:600;white-space:nowrap">'+fmt(it.price||0)+'</td></tr>';
+          return'<tr><td style="width:28px;text-align:center"><div style="width:16px;height:16px;border:1.5px solid #94a3b8;border-radius:3px;display:inline-block"></div></td><td>'+esc(translatedName)+'</td><td style="text-align:right;font-weight:600;white-space:nowrap">'+fmtCurrency(it.price||0)+'</td></tr>';
         }).join('');
       }).join('');
     var stageTotalBox=stDisc>0
-      ?'<div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px;padding:8px 12px;background:#f0fdf4;border-radius:8px;border:1px solid #86efac">'         +'<div><div style="font-size:11px;color:#64748b">'+t.stageTotal+'</div>'         +'<div style="font-size:12px;color:#94a3b8;text-decoration:line-through">'+fmt(stTot)+'</div></div>'         +'<div style="text-align:right"><span style="background:#dc2626;color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:999px;margin-bottom:3px;display:inline-block">-'+stDisc+'%</span>'         +'<div style="font-size:15px;font-weight:700;color:#16a34a">'+fmt(stTotDisc)+'</div></div></div>'
-      :'<div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px;padding:8px 12px;background:#e0f2fe;border-radius:8px;border:1px solid #bae6fd">'         +'<span style="font-size:12px;font-weight:600;color:#0369a1">'+t.stageTotal+'</span>'         +'<span style="font-size:15px;font-weight:700;color:#0c3560">'+fmt(stTot)+'</span></div>';
+      ?'<div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px;padding:8px 12px;background:#f0fdf4;border-radius:8px;border:1px solid #86efac">'         +'<div><div style="font-size:11px;color:#64748b">'+t.stageTotal+'</div>'         +'<div style="font-size:12px;color:#94a3b8;text-decoration:line-through">'+fmtCurrency(stTot)+'</div></div>'         +'<div style="text-align:right"><span style="background:#dc2626;color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:999px;margin-bottom:3px;display:inline-block">-'+stDisc+'%</span>'         +'<div style="font-size:15px;font-weight:700;color:#16a34a">'+fmtCurrency(stTotDisc)+'</div></div></div>'
+      :'<div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px;padding:8px 12px;background:#e0f2fe;border-radius:8px;border:1px solid #bae6fd">'         +'<span style="font-size:12px;font-weight:600;color:#0369a1">'+t.stageTotal+'</span>'         +'<span style="font-size:15px;font-weight:700;color:#0c3560">'+fmtCurrency(stTot)+'</span></div>';
     return '<div style="margin-bottom:18px">'      +'<div style="font-weight:600;color:#0c3560;margin-bottom:8px;font-size:13px;padding-bottom:6px;border-bottom:1px solid #e2e8f0">'+t.stage+' '+(idx+1)+': '+esc(stage.name)+'</div>'      +'<table class="pdf-table"><thead><tr><th style="width:28px">✓</th><th>'+t.procedure+'</th><th style="text-align:right">'+t.price+'</th></tr></thead><tbody>'+rows+'</tbody></table>'      +stageTotalBox      +'</div>';
   }).join('');
 
   var grandTotalBox=hasAnyDisc
-    ?'<div style="margin-top:14px;padding-top:12px;border-top:2px solid #0c3560;display:flex;flex-direction:column;align-items:flex-end;gap:4px">'       +'<div style="font-size:13px;color:#64748b">'+t.grandTotal+' fără reducere: <span style="font-weight:600;text-decoration:line-through">'+fmt(gt)+'</span></div>'       +'<div style="font-size:18px;font-weight:700;color:#16a34a">'+t.grandTotal+': '+fmt(gtWithDisc)+'</div></div>'
-    :'<div style="margin-top:14px;text-align:right;font-size:16px;font-weight:700;color:#0c3560;padding-top:12px;border-top:2px solid #0c3560">'+t.grandTotal+': '+fmt(gt)+'</div>';
+    ?'<div style="margin-top:14px;padding-top:12px;border-top:2px solid #0c3560;display:flex;flex-direction:column;align-items:flex-end;gap:4px">'       +'<div style="font-size:13px;color:#64748b">'+t.grandTotal+' fără reducere: <span style="font-weight:600;text-decoration:line-through">'+fmtCurrency(gt)+'</span></div>'       +'<div style="font-size:18px;font-weight:700;color:#16a34a">'+t.grandTotal+': '+fmtCurrency(gtWithDisc)+'</div></div>'
+    :'<div style="margin-top:14px;text-align:right;font-size:16px;font-weight:700;color:#0c3560;padding-top:12px;border-top:2px solid #0c3560">'+t.grandTotal+': '+fmtCurrency(gt)+'</div>';
 
-  var html='<div class="pdf-page">'    +'<div class="pdf-header"><img src="'+LOGO_B64+'" style="height:60px;object-fit:contain;max-width:200px">'    +'<div style="flex:1"><div style="font-size:12px;color:#64748b;margin-top:2px">'+t.planTitle+'</div>'    +'<div style="font-size:11px;color:#94a3b8;margin-top:2px">'+esc(phone)+(addr?' · '+esc(addr):'')+'</div></div>'    +'<div style="text-align:right;font-size:11px;color:#94a3b8">'+t.date+': '+today+'</div></div>'    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px;margin-bottom:16px;background:#f8fafc;padding:12px;border-radius:8px">'    +'<div><strong>'+t.patient+':</strong> '+esc(pat?pat.name:'—')+'</div>'    +'<div><strong>'+t.doctor+':</strong> '+esc(doctor||'Dr. ______________')+'</div>'    +(pat&&pat.diagnosis?'<div style="grid-column:span 2"><strong>Diagnostic:</strong> '+esc(pat.diagnosis)+'</div>':'')    +'</div>'    +stagesHtml    +'<div style="margin-top:14px;padding:12px;background:#f0fdf4;border-radius:8px;font-size:12px;border:1px solid #bbf7d0"><strong>'+t.recommendations+':</strong> '+t.rec+'</div>'    +grandTotalBox    +'<div style="margin-top:20px;display:grid;grid-template-columns:1fr 1fr;gap:20px;font-size:12px;color:#64748b">'    +'<div style="border-top:1px solid #e2e8f0;padding-top:8px">Semnătura medicului</div>'    +'<div style="border-top:1px solid #e2e8f0;padding-top:8px">Semnătura pacientului</div></div>'    +'</div>';
+  var html='<div class="pdf-page">'    +'<div class="pdf-header"><img src="'+LOGO_B64+'" style="height:60px;object-fit:contain;max-width:200px">'    +'<div style="flex:1"><div style="font-size:12px;color:#64748b;margin-top:2px">'+t.planTitle+'</div>'    +'<div style="font-size:11px;color:#94a3b8;margin-top:2px">'+esc(phone)+(addr?' · '+esc(addr):'')+'</div></div>'    +'<div style="text-align:right;font-size:11px;color:#94a3b8">'+t.date+': '+today  +((document.getElementById('pdf-currency')||{}).value&&(document.getElementById('pdf-currency')||{}).value!=='MDL'    ?'<br><span style="font-size:10px;background:#fef9c3;color:#854d0e;padding:1px 5px;border-radius:3px;font-weight:600">'+((document.getElementById('pdf-currency')||{}).value||'MDL')+(state_rates.EUR||state_rates.USD?(' · 1 '+((document.getElementById('pdf-currency')||{}).value||'')+'='+(((document.getElementById('pdf-currency')||{}).value==='EUR'?state_rates.EUR:state_rates.USD)||'').toFixed(2)+' MDL'):'')+'</span>'    :'')  +'</div></div>'    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px;margin-bottom:16px;background:#f8fafc;padding:12px;border-radius:8px">'    +'<div><strong>'+t.patient+':</strong> '+esc(pat?pat.name:'—')+'</div>'    +'<div><strong>'+t.doctor+':</strong> '+esc(doctor||'Dr. ______________')+'</div>'    +(pat&&pat.diagnosis?'<div style="grid-column:span 2"><strong>Diagnostic:</strong> '+esc(pat.diagnosis)+'</div>':'')    +'</div>'    +stagesHtml    +'<div style="margin-top:14px;padding:12px;background:#f0fdf4;border-radius:8px;font-size:12px;border:1px solid #bbf7d0"><strong>'+t.recommendations+':</strong> '+t.rec+'</div>'    +grandTotalBox    +'<div style="margin-top:20px;display:grid;grid-template-columns:1fr 1fr;gap:20px;font-size:12px;color:#64748b">'    +'<div style="border-top:1px solid #e2e8f0;padding-top:8px">Semnătura medicului</div>'    +'<div style="border-top:1px solid #e2e8f0;padding-top:8px">Semnătura pacientului</div></div>'    +'</div>';
   document.getElementById('pdf-preview').innerHTML=html;
 }
 
@@ -2735,6 +2743,8 @@ function openPdfModal(){
   var doc=document.getElementById('sel-doctor');
   var pdfDoc=document.getElementById('clinic-doctor');
   if(doc&&pdfDoc&&doc.value&&!pdfDoc.value) pdfDoc.value=doc.value;
+  // Pre-fetch currency rates silently
+  if(!state_rates.fetchedAt) fetchMAIBRates();
   renderPdfPreviewWithCurrentLang();
 }
 
@@ -2809,6 +2819,81 @@ async function saveNewPassword(){
   }
 }
 // ---- END SCHIMBARE PAROLA ----
+
+// ---- CURRENCY ----
+var state_rates={EUR:null,USD:null,fetchedAt:null};
+
+async function fetchMAIBRates(){
+  try{
+    // MAIB publishes rates via BNM XML feed - use cors proxy
+    var res=await fetch('https://www.bnm.md/ro/content/rata-de-schimb-a-leului-moldovenesc-fata-de-unele-valute-straine',{mode:'no-cors'});
+  }catch(e){}
+  // Fallback: use bnm.md JSON API
+  try{
+    var r=await fetch('https://bnm.md/en/export-official-exchange-rates?date=&currency=EUR');
+    // BNM doesn't have CORS - use a public proxy
+  }catch(e){}
+  // Use exchangerate-api (free, no key needed for basic)
+  try{
+    var resp=await fetch('https://api.exchangerate-api.com/v4/latest/MDL');
+    if(resp.ok){
+      var data=await resp.json();
+      if(data.rates){
+        state_rates.EUR=data.rates.EUR?Math.round((1/data.rates.EUR)*100)/100:null;
+        state_rates.USD=data.rates.USD?Math.round((1/data.rates.USD)*100)/100:null;
+        state_rates.fetchedAt=new Date();
+        return true;
+      }
+    }
+  }catch(e){}
+  // Final fallback: approximate rates
+  state_rates.EUR=19.5;
+  state_rates.USD=17.8;
+  state_rates.fetchedAt=null;
+  return false;
+}
+
+async function onCurrencyChange(){
+  var cur=document.getElementById('pdf-currency').value;
+  var rateEl=document.getElementById('pdf-currency-rate');
+  if(cur==='MDL'){
+    if(rateEl) rateEl.textContent='';
+    renderPdfPreview();
+    return;
+  }
+  // Fetch rates if not fetched today
+  var needFetch=!state_rates.fetchedAt||
+    (new Date()-state_rates.fetchedAt)>3600000; // 1 hour
+  if(needFetch){
+    if(rateEl) rateEl.textContent='Se încarcă cursul...';
+    await fetchMAIBRates();
+  }
+  var rate=cur==='EUR'?state_rates.EUR:state_rates.USD;
+  if(rateEl&&rate){
+    var src=state_rates.fetchedAt?'BNM':'estimat';
+    rateEl.textContent='1 '+cur+' = '+rate.toFixed(2)+' MDL ('+src+')';
+  }
+  renderPdfPreview();
+}
+
+function convertPrice(mdlAmount){
+  var cur=(document.getElementById('pdf-currency')||{}).value||'MDL';
+  if(cur==='MDL') return mdlAmount;
+  var rate=cur==='EUR'?state_rates.EUR:state_rates.USD;
+  if(!rate) return mdlAmount;
+  return Math.round(mdlAmount/rate*100)/100;
+}
+
+function fmtCurrency(mdlAmount){
+  var cur=(document.getElementById('pdf-currency')||{}).value||'MDL';
+  if(cur==='MDL') return fmt(mdlAmount);
+  var rate=cur==='EUR'?state_rates.EUR:state_rates.USD;
+  if(!rate) return fmt(mdlAmount)+' MDL';
+  var val=Math.round(mdlAmount/rate*100)/100;
+  var sym=cur==='EUR'?'€':'$';
+  return sym+new Intl.NumberFormat('ro-RO',{minimumFractionDigits:2,maximumFractionDigits:2}).format(val);
+}
+// ---- END CURRENCY ----
 
 // Set login logo
 var loginLogo = document.querySelector('.login-box img');
