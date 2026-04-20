@@ -2881,7 +2881,7 @@ function convertPrice(mdlAmount){
   if(cur==='MDL') return mdlAmount;
   var rate=cur==='EUR'?state_rates.EUR:state_rates.USD;
   if(!rate) return mdlAmount;
-  return Math.round(mdlAmount/rate*100)/100;
+  return Math.ceil(mdlAmount/rate*2)/2;
 }
 
 function fmtCurrency(mdlAmount){
@@ -2889,7 +2889,7 @@ function fmtCurrency(mdlAmount){
   if(cur==='MDL') return fmt(mdlAmount);
   var rate=cur==='EUR'?state_rates.EUR:state_rates.USD;
   if(!rate) return fmt(mdlAmount)+' MDL';
-  var val=Math.round(mdlAmount/rate*100)/100;
+  var val=Math.ceil(mdlAmount/rate*2)/2;
   var sym=cur==='EUR'?'€':'$';
   return sym+new Intl.NumberFormat('ro-RO',{minimumFractionDigits:2,maximumFractionDigits:2}).format(val);
 }
