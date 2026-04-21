@@ -1366,6 +1366,7 @@ function showApp(){
   loadAll();
   loadReminderTypes();
   startRealtimeSync();
+  loadDoctorColors();
 }
 
 function startRealtimeSync(){
@@ -2951,8 +2952,20 @@ var DOCTOR_COLORS={
   'Dr. Muradu Ana':'#7c3aed'
 };
 
+async function loadDoctorColors(){
+  var{data}=await sb.from('doctor_settings').select('*');
+  if(data&&data.length){
+    data.forEach(function(d){DOCTOR_COLORS[d.doctor]=d.color;});
+  }
+}
+
 function getDoctorColor(doctor){
   return DOCTOR_COLORS[doctor]||'#0c3560';
+}
+
+async function saveDoctorColor(doctor, color){
+  await sb.from('doctor_settings').upsert([{doctor:doctor,color:color}],{onConflict:'doctor'});
+  DOCTOR_COLORS[doctor]=color;
 }
 // ---- END DOCTOR COLORS ----
 
@@ -2974,13 +2987,21 @@ function calToday(){
   loadCalendar();
 }
 
+async function onDoctorColorChange(doctor, color){
+  await saveDoctorColor(doctor, color);
+  showNotif('✓ Culoare salvată pentru '+doctor);
+  renderCalendar();
+}
+
 async function loadCalendar(){
-  // Render doctor legend
+  // Render doctor legend with color pickers
   var legend=document.getElementById('cal-legend');
   if(legend){
     legend.innerHTML=Object.keys(DOCTOR_COLORS).map(function(doc){
       return'<div style="display:flex;align-items:center;gap:5px;font-size:12px;color:#475569">'
-        +'<div style="width:12px;height:12px;border-radius:50%;background:'+DOCTOR_COLORS[doc]+'"></div>'
+        +'<input type="color" value="'+DOCTOR_COLORS[doc]+'" title="Schimbă culoarea pentru '+doc+'"'
+        +' onchange="onDoctorColorChange(\''+doc+'\',this.value)"'
+        +' style="width:20px;height:20px;border-radius:50%;border:2px solid #e2e8f0;cursor:pointer;padding:0;overflow:hidden">'
         +esc(doc)+'</div>';
     }).join('');
   }
