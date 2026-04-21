@@ -147,6 +147,9 @@ tr:last-child td{border-bottom:none}
 .rem-card.no_answer{border-left:4px solid #f59e0b;background:#fffbeb}
 .cal-event{border-radius:5px;padding:3px 6px;font-size:11px;font-weight:600;color:#fff;cursor:pointer;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;margin-bottom:2px;transition:opacity 0.15s}
 .cal-event:hover{opacity:0.85}
+.cal-event-abs{transition:box-shadow 0.15s}
+.cal-event-abs:hover{box-shadow:0 4px 12px rgba(0,0,0,0.3)!important}
+.cal-event-abs.dragging{opacity:0.8;box-shadow:0 8px 24px rgba(0,0,0,0.3)!important;z-index:10!important}
 .cal-hour-cell{border-top:1px solid #f1f5f9;position:relative;min-height:48px}
 .cal-day-col{border-left:1px solid #e2e8f0;flex:1;position:relative}
 .cal-time-label{font-size:10px;color:#94a3b8;width:44px;flex-shrink:0;text-align:right;padding-right:8px;padding-top:2px}
@@ -156,6 +159,7 @@ tr:last-child td{border-bottom:none}
 .rem-note{font-size:12px;color:#475569;margin-top:4px;font-style:italic}
 .rem-plan{font-size:11px;color:#64748b;margin-top:6px;padding:8px;background:rgba(0,0,0,0.03);border-radius:6px}
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/interact.js/1.10.27/interact.min.js"></script>
 </head>
 <body>
 <div class="notif" id="notif"></div>
@@ -3045,42 +3049,144 @@ function renderWeekView(appts){
   document.getElementById('cal-title').textContent=
     weekStart.toLocaleDateString('ro-RO',{day:'numeric',month:'long'})+' – '+
     days[6].toLocaleDateString('ro-RO',{day:'numeric',month:'long',year:'numeric'});
-  var hours=[];for(var h=7;h<=20;h++)hours.push(h);
-  var html='<div style="display:flex;position:sticky;top:0;z-index:2;background:#fff;border-bottom:2px solid #e2e8f0">'
+  var HOUR_H=48; // px per hour
+  var START_H=7; // first hour shown
+  var END_H=21;
+  var TOTAL_H=(END_H-START_H)*HOUR_H;
+  var hours=[];for(var h=START_H;h<=END_H;h++)hours.push(h);
+
+  // Header
+  var html='<div style="display:flex;position:sticky;top:0;z-index:3;background:#fff;border-bottom:2px solid #e2e8f0">'
     +'<div style="width:44px;flex-shrink:0"></div>'
     +days.map(function(d,i){
       var isToday=d.getTime()===today.getTime();
       return'<div class="cal-day-col" style="text-align:center;padding:8px 4px;background:'+(isToday?'#eff6ff':'#fff')+';">'
         +'<div style="font-size:11px;color:#64748b">'+dayNames[i]+'</div>'
-        +'<div style="font-size:16px;font-weight:700;color:'+(isToday?'#0c3560':'#1e293b')+';width:28px;height:28px;border-radius:50%;background:'+(isToday?'#0c3560':'transparent')+';color:'+(isToday?'#fff':'#1e293b')+';display:flex;align-items:center;justify-content:center;margin:0 auto">'
-        +d.getDate()+'</div></div>';
+        +'<div style="font-size:16px;font-weight:700;width:28px;height:28px;border-radius:50%;background:'+(isToday?'#0c3560':'transparent')+';color:'+(isToday?'#fff':'#1e293b')+';display:flex;align-items:center;justify-content:center;margin:0 auto">'+d.getDate()+'</div></div>';
     }).join('')+'</div>';
-  html+='<div style="display:flex;overflow-y:auto">'
-    +'<div style="width:44px;flex-shrink:0">'
-    +hours.map(function(h){return'<div class="cal-hour-cell cal-time-label">'+h+':00</div>';}).join('')
-    +'</div>';
-  days.forEach(function(d){
+
+  // Body
+  html+='<div style="display:flex;overflow-y:auto;max-height:calc(100% - 60px)">';
+
+  // Time labels
+  html+='<div style="width:44px;flex-shrink:0;position:relative">';
+  hours.forEach(function(h){
+    html+='<div style="height:'+ HOUR_H+'px;border-top:1px solid #f1f5f9;font-size:10px;color:#94a3b8;text-align:right;padding:2px 6px 0 0">'+(h<=20?h+':00':'')+'</div>';
+  });
+  html+='</div>';
+
+  // Day columns
+  days.forEach(function(d,di){
     var dayAppts=appts.filter(function(a){
       var ad=new Date(a.start_at);ad.setHours(0,0,0,0);
       return ad.getTime()===d.getTime();
     });
-    html+='<div class="cal-day-col" onclick="openAppointmentModalAtTime(\''+d.toISOString()+'\')" style="cursor:pointer">';
-    hours.forEach(function(h){
-      var hourAppts=dayAppts.filter(function(a){return new Date(a.start_at).getHours()===h;});
-      html+='<div class="cal-hour-cell" style="padding:2px 4px">'
-        +hourAppts.map(function(a){
-          var pat=a.patients||{};
-          var startT=new Date(a.start_at).toLocaleTimeString('ro-RO',{hour:'2-digit',minute:'2-digit'});
-          var endT=new Date(a.end_at).toLocaleTimeString('ro-RO',{hour:'2-digit',minute:'2-digit'});
-          return'<div class="cal-event" style="background:'+a.color+'" onclick="event.stopPropagation();editAppointment(\''+a.id+'\')" title="'+esc(pat.name||'')+' — '+esc(a.title)+'">'
-            +startT+'-'+endT+' '+esc(pat.name||a.title)+'</div>';
-        }).join('')
-        +'</div>';
+    html+='<div class="cal-day-col" data-date="'+d.toISOString()+'" style="position:relative;height:'+(TOTAL_H+HOUR_H)+'px;cursor:pointer" onclick="calColumnClick(event,\''+d.toISOString()+'\')">'
+      // Hour grid lines
+      +hours.map(function(h,hi){
+        return'<div style="position:absolute;left:0;right:0;top:'+(hi*HOUR_H)+'px;height:'+ HOUR_H+'px;border-top:1px solid #f1f5f9"></div>';
+      }).join('');
+
+    // Render events with absolute positioning
+    dayAppts.forEach(function(a){
+      var startD=new Date(a.start_at);
+      var endD=new Date(a.end_at);
+      var startMins=(startD.getHours()-START_H)*60+startD.getMinutes();
+      var endMins=(endD.getHours()-START_H)*60+endD.getMinutes();
+      if(endMins<=0||startMins>=(END_H-START_H)*60) return;
+      startMins=Math.max(0,startMins);
+      endMins=Math.min((END_H-START_H)*60,endMins);
+      var top=startMins/60*HOUR_H;
+      var height=Math.max(20,(endMins-startMins)/60*HOUR_H-2);
+      var startT=startD.toLocaleTimeString('ro-RO',{hour:'2-digit',minute:'2-digit'});
+      var endT=endD.toLocaleTimeString('ro-RO',{hour:'2-digit',minute:'2-digit'});
+      var pat=a.patients||{};
+      html+='<div class="cal-event-abs" id="evt-'+a.id+'" data-id="'+a.id+'" '        +'style="position:absolute;left:2px;right:2px;top:'+top+'px;height:'+height+'px;background:'+a.color+';border-radius:5px;padding:3px 6px;color:#fff;font-size:11px;font-weight:600;overflow:hidden;cursor:grab;user-select:none;z-index:1;box-shadow:0 1px 3px rgba(0,0,0,0.2)"'        +' onclick="event.stopPropagation();editAppointment(\''+ a.id+'\')"'        +' title="'+esc(pat.name||'')+' — '+esc(a.title)+'">'        +startT+'-'+endT+' '+esc(pat.name||a.title)        +'<div class="cal-resize-handle" data-id="'+a.id+'" style="position:absolute;bottom:0;left:0;right:0;height:6px;cursor:ns-resize;background:rgba(255,255,255,0.3);border-radius:0 0 5px 5px"></div>'        +'</div>';
     });
     html+='</div>';
   });
   html+='</div>';
+
   document.getElementById('cal-grid').innerHTML=html;
+  initDragDrop();
+}
+
+function calColumnClick(e, isoDate){
+  // Calculate time from click position
+  var col=e.currentTarget;
+  var rect=col.getBoundingClientRect();
+  var y=e.clientY-rect.top;
+  var HOUR_H=48;var START_H=7;
+  var hourOffset=Math.floor(y/HOUR_H);
+  var mins=Math.round((y%HOUR_H)/HOUR_H*2)*30;
+  var d=new Date(isoDate);
+  d.setHours(START_H+hourOffset,mins,0,0);
+  openAppointmentModalAtTime(d.toISOString());
+}
+
+function initDragDrop(){
+  if(typeof interact==='undefined') return;
+  var HOUR_H=48;var START_H=7;
+  // Drag
+  interact('.cal-event-abs').draggable({
+    listeners:{
+      move:function(e){
+        var el=e.target;
+        var top=parseFloat(el.style.top||0)+e.dy;
+        el.style.top=top+'px';
+        el.dataset.dragging='1';
+      },
+      end:function(e){
+        if(!e.target.dataset.dragging) return;
+        delete e.target.dataset.dragging;
+        var id=e.target.dataset.id;
+        var top=parseFloat(e.target.style.top||0);
+        var newStartMins=Math.round(top/HOUR_H*60/15)*15;
+        var appt=cal_appointments.find(function(a){return a.id===id;});
+        if(!appt) return;
+        var dur=(new Date(appt.end_at)-new Date(appt.start_at));
+        var newStart=new Date(new Date(appt.start_at));
+        newStart.setHours(START_H+Math.floor(newStartMins/60),newStartMins%60,0,0);
+        var newEnd=new Date(newStart.getTime()+dur);
+        updateApptTime(id,newStart,newEnd);
+      }
+    },
+    modifiers:[interact.modifiers.restrictToParent({endOnly:true})]
+  });
+  // Resize
+  interact('.cal-resize-handle').draggable({
+    listeners:{
+      move:function(e){
+        var handle=e.target;
+        var el=handle.parentElement;
+        var h=parseFloat(el.style.height||HOUR_H)+e.dy;
+        el.style.height=Math.max(20,h)+'px';
+      },
+      end:function(e){
+        var handle=e.target;
+        var el=handle.parentElement;
+        var id=handle.dataset.id;
+        var top=parseFloat(el.style.top||0);
+        var height=parseFloat(el.style.height||HOUR_H);
+        var startMins=Math.round(top/HOUR_H*60/15)*15;
+        var endMins=Math.round((top+height)/HOUR_H*60/15)*15;
+        var appt=cal_appointments.find(function(a){return a.id===id;});
+        if(!appt) return;
+        var base=new Date(appt.start_at);base.setHours(START_H+Math.floor(startMins/60),startMins%60,0,0);
+        var newEnd=new Date(base);newEnd.setHours(START_H+Math.floor(endMins/60),endMins%60,0,0);
+        if(newEnd<=base) newEnd=new Date(base.getTime()+30*60*1000);
+        updateApptTime(id,base,newEnd);
+      }
+    }
+  });
+}
+
+async function updateApptTime(id,newStart,newEnd){
+  await sb.from('appointments').update({start_at:newStart.toISOString(),end_at:newEnd.toISOString()}).eq('id',id);
+  var appt=cal_appointments.find(function(a){return a.id===id;});
+  if(appt){appt.start_at=newStart.toISOString();appt.end_at=newEnd.toISOString();}
+  showNotif('✓ Programare actualizată!');
+  renderCalendar();
 }
 
 function renderDayView(appts){
