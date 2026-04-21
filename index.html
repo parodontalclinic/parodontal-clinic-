@@ -740,6 +740,8 @@ tr:last-child td{border-bottom:none}
             </select>
             <button class="btn btn-primary" onclick="openAppointmentModal()" style="font-size:12px;padding:6px 14px">+ Programare nouă</button>
           </div>
+          <!-- Legenda medici -->
+          <div style="display:flex;gap:12px;align-items:center;padding:6px 0" id="cal-legend"></div>
         </div>
 
         <!-- Calendar grid -->
@@ -764,7 +766,7 @@ tr:last-child td{border-bottom:none}
           </div>
           <div>
             <label style="font-size:12px;font-weight:600;color:#64748b;display:block;margin-bottom:4px">Medic</label>
-            <select id="appt-doctor" style="width:100%;border:1px solid #e2e8f0;border-radius:8px;padding:8px;font-size:13px;outline:none">
+            <select id="appt-doctor" onchange="onApptDoctorChange()" style="width:100%;border:1px solid #e2e8f0;border-radius:8px;padding:8px;font-size:13px;outline:none">
               <option value="Dr. Muradu Alexandru">Dr. Muradu Alexandru</option>
               <option value="Dr. Muradu Ana">Dr. Muradu Ana</option>
             </select>
@@ -784,14 +786,10 @@ tr:last-child td{border-bottom:none}
             </div>
           </div>
           <div>
-            <label style="font-size:12px;font-weight:600;color:#64748b;display:block;margin-bottom:4px">Culoare</label>
-            <div style="display:flex;gap:8px;flex-wrap:wrap" id="appt-colors">
-              <button onclick="selectApptColor('#0c3560')" data-color="#0c3560" style="width:28px;height:28px;border-radius:50%;background:#0c3560;border:3px solid #0c3560;cursor:pointer"></button>
-              <button onclick="selectApptColor('#16a34a')" data-color="#16a34a" style="width:28px;height:28px;border-radius:50%;background:#16a34a;border:2px solid transparent;cursor:pointer"></button>
-              <button onclick="selectApptColor('#dc2626')" data-color="#dc2626" style="width:28px;height:28px;border-radius:50%;background:#dc2626;border:2px solid transparent;cursor:pointer"></button>
-              <button onclick="selectApptColor('#d97706')" data-color="#d97706" style="width:28px;height:28px;border-radius:50%;background:#d97706;border:2px solid transparent;cursor:pointer"></button>
-              <button onclick="selectApptColor('#7c3aed')" data-color="#7c3aed" style="width:28px;height:28px;border-radius:50%;background:#7c3aed;border:2px solid transparent;cursor:pointer"></button>
-              <button onclick="selectApptColor('#0891b2')" data-color="#0891b2" style="width:28px;height:28px;border-radius:50%;background:#0891b2;border:2px solid transparent;cursor:pointer"></button>
+            <label style="font-size:12px;font-weight:600;color:#64748b;display:block;margin-bottom:4px">Culoare (per medic)</label>
+            <div style="display:flex;gap:10px;align-items:center;padding:8px;background:#f8fafc;border-radius:8px;border:1px solid #e2e8f0" id="appt-colors">
+              <div id="appt-color-preview" style="width:24px;height:24px;border-radius:50%;background:#0c3560;flex-shrink:0"></div>
+              <div id="appt-color-label" style="font-size:12px;color:#475569">Se setează automat după medic</div>
             </div>
             <input type="hidden" id="appt-color" value="#0c3560">
           </div>
@@ -2946,6 +2944,18 @@ async function saveNewPassword(){
 }
 // ---- END SCHIMBARE PAROLA ----
 
+
+// ---- DOCTOR COLORS ----
+var DOCTOR_COLORS={
+  'Dr. Muradu Alexandru':'#0c3560',
+  'Dr. Muradu Ana':'#7c3aed'
+};
+
+function getDoctorColor(doctor){
+  return DOCTOR_COLORS[doctor]||'#0c3560';
+}
+// ---- END DOCTOR COLORS ----
+
 // ---- CALENDAR ----
 var cal_date=new Date();
 var cal_appointments=[];
@@ -2965,6 +2975,15 @@ function calToday(){
 }
 
 async function loadCalendar(){
+  // Render doctor legend
+  var legend=document.getElementById('cal-legend');
+  if(legend){
+    legend.innerHTML=Object.keys(DOCTOR_COLORS).map(function(doc){
+      return'<div style="display:flex;align-items:center;gap:5px;font-size:12px;color:#475569">'
+        +'<div style="width:12px;height:12px;border-radius:50%;background:'+DOCTOR_COLORS[doc]+'"></div>'
+        +esc(doc)+'</div>';
+    }).join('');
+  }
   // Load appointments for visible range
   var view=document.getElementById('cal-view')?document.getElementById('cal-view').value:'week';
   var from,to;
@@ -3113,12 +3132,21 @@ function populateApptPatientSelect(){
     +state.patients.map(function(p){return'<option value="'+p.id+'">'+esc(p.name)+'</option>';}).join('');
 }
 
+function onApptDoctorChange(){
+  var doctor=document.getElementById('appt-doctor').value;
+  var color=getDoctorColor(doctor);
+  document.getElementById('appt-color').value=color;
+  var preview=document.getElementById('appt-color-preview');
+  var label=document.getElementById('appt-color-label');
+  if(preview) preview.style.background=color;
+  if(label) label.textContent=doctor||'—';
+}
+
 function selectApptColor(color){
   cal_selectedColor=color;
   document.getElementById('appt-color').value=color;
-  document.querySelectorAll('#appt-colors button').forEach(function(btn){
-    btn.style.border=btn.getAttribute('data-color')===color?'3px solid #0c3560':'2px solid transparent';
-  });
+  var preview=document.getElementById('appt-color-preview');
+  if(preview) preview.style.background=color;
 }
 
 function openAppointmentModal(){
@@ -3134,7 +3162,8 @@ function openAppointmentModal(){
   var end=new Date(now.getTime()+60*60*1000);
   document.getElementById('appt-start').value=now.toISOString().slice(0,16);
   document.getElementById('appt-end').value=end.toISOString().slice(0,16);
-  selectApptColor('#0c3560');
+  selectApptColor(getDoctorColor(document.getElementById('appt-doctor').value));
+  onApptDoctorChange();
   var modal=document.getElementById('appointment-modal');
   modal.classList.remove('hidden');modal.style.display='flex';
 }
@@ -3160,7 +3189,8 @@ function editAppointment(id){
   document.getElementById('appt-end').value=new Date(a.end_at).toISOString().slice(0,16);
   document.getElementById('appt-modal-title').textContent='Editează programarea';
   document.getElementById('appt-delete-btn').classList.remove('hidden');
-  selectApptColor(a.color||'#0c3560');
+  selectApptColor(a.color||getDoctorColor(a.doctor));
+  onApptDoctorChange();
   var modal=document.getElementById('appointment-modal');
   modal.classList.remove('hidden');modal.style.display='flex';
 }
@@ -3172,7 +3202,7 @@ async function saveAppointment(){
   var title=document.getElementById('appt-title').value.trim();
   var startAt=document.getElementById('appt-start').value;
   var endAt=document.getElementById('appt-end').value;
-  var color=document.getElementById('appt-color').value||'#0c3560';
+  var color=getDoctorColor(doctor);
   var notes=document.getElementById('appt-notes').value;
   if(!title){showNotif('Introdu titlul programării!',false);return;}
   if(!startAt||!endAt){showNotif('Selectează data și ora!',false);return;}
