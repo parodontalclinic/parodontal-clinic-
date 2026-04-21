@@ -145,6 +145,11 @@ tr:last-child td{border-bottom:none}
 .rem-card.done{border-left:4px solid #94a3b8;background:#f8fafc;opacity:0.7}
 .rem-card.refused{border-left:4px solid #ef4444;background:#fef2f2;opacity:0.8}
 .rem-card.no_answer{border-left:4px solid #f59e0b;background:#fffbeb}
+.cal-event{border-radius:5px;padding:3px 6px;font-size:11px;font-weight:600;color:#fff;cursor:pointer;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;margin-bottom:2px;transition:opacity 0.15s}
+.cal-event:hover{opacity:0.85}
+.cal-hour-cell{border-top:1px solid #f1f5f9;position:relative;min-height:48px}
+.cal-day-col{border-left:1px solid #e2e8f0;flex:1;position:relative}
+.cal-time-label{font-size:10px;color:#94a3b8;width:44px;flex-shrink:0;text-align:right;padding-right:8px;padding-top:2px}
 .rem-patient{font-size:14px;font-weight:700;color:#0c3560}
 .rem-type{font-size:13px;font-weight:600;color:#1e293b;margin-top:2px}
 .rem-date{font-size:12px;color:#64748b;margin-top:4px}
@@ -194,6 +199,9 @@ tr:last-child td{border-bottom:none}
 
     <button class="sidebar-btn" id="sbtn-receipt" onclick="switchTab('receipt')">
       <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h4"/></svg>Bon de plată
+    </button>
+    <button class="sidebar-btn" id="sbtn-calendar" onclick="switchTab('calendar')">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>Calendar
     </button>
     <div class="sidebar-spacer"></div>
     <div class="sidebar-user">
@@ -251,6 +259,7 @@ tr:last-child td{border-bottom:none}
 
 
       <button class="tab-btn" id="tab-btn-receipt" onclick="switchTab('receipt')">🧾 Bon de plată</button>
+      <button class="tab-btn" id="tab-btn-calendar" onclick="switchTab('calendar')">📅 Calendar</button>
     </div>
 
     <!-- PACIENTI -->
@@ -701,6 +710,99 @@ tr:last-child td{border-bottom:none}
           <div class="card-sub" id="receipt-patient-name-label">Selectează un pacient</div>
           <div id="receipt-preview">
             <div class="loading">Selectează un pacient pentru a vedea bonurile</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CALENDAR -->
+    <div id="tab-calendar" class="tab-content">
+      <div style="display:flex;flex-direction:column;gap:0;height:calc(100vh - 140px)">
+
+        <!-- Calendar header -->
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;flex-shrink:0;flex-wrap:wrap;gap:8px">
+          <div style="display:flex;align-items:center;gap:8px">
+            <button class="btn" onclick="calNav(-1)" style="padding:6px 12px">‹</button>
+            <div id="cal-title" style="font-size:16px;font-weight:700;color:#0c3560;min-width:180px;text-align:center"></div>
+            <button class="btn" onclick="calNav(1)" style="padding:6px 12px">›</button>
+            <button class="btn" onclick="calToday()" style="padding:6px 12px;font-size:12px">Azi</button>
+          </div>
+          <div style="display:flex;gap:6px;align-items:center">
+            <select id="cal-view" onchange="renderCalendar()" style="font-size:12px;padding:5px 8px;border-radius:7px;border:1px solid #e2e8f0">
+              <option value="week">Săptămână</option>
+              <option value="day">Zi</option>
+              <option value="month">Lună</option>
+            </select>
+            <select id="cal-doctor-filter" onchange="renderCalendar()" style="font-size:12px;padding:5px 8px;border-radius:7px;border:1px solid #e2e8f0">
+              <option value="">Toți medicii</option>
+              <option value="Dr. Muradu Alexandru">Dr. Muradu Alexandru</option>
+              <option value="Dr. Muradu Ana">Dr. Muradu Ana</option>
+            </select>
+            <button class="btn btn-primary" onclick="openAppointmentModal()" style="font-size:12px;padding:6px 14px">+ Programare nouă</button>
+          </div>
+        </div>
+
+        <!-- Calendar grid -->
+        <div id="cal-grid" style="flex:1;overflow:auto;border:1px solid #e2e8f0;border-radius:12px;background:#fff"></div>
+      </div>
+    </div>
+
+    <!-- APPOINTMENT MODAL -->
+    <div id="appointment-modal" class="hidden" style="position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px" onclick="closeAppointmentModal()">
+      <div style="background:#fff;border-radius:14px;width:100%;max-width:460px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.3)" onclick="event.stopPropagation()">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 24px;border-bottom:1px solid #e2e8f0">
+          <div id="appt-modal-title" style="font-size:16px;font-weight:700;color:#0c3560">Programare nouă</div>
+          <button onclick="closeAppointmentModal()" style="background:#f1f5f9;border:none;border-radius:8px;padding:6px 12px;cursor:pointer;font-size:13px">✕</button>
+        </div>
+        <div style="padding:20px;display:flex;flex-direction:column;gap:12px">
+          <input type="hidden" id="appt-id" value="">
+          <div>
+            <label style="font-size:12px;font-weight:600;color:#64748b;display:block;margin-bottom:4px">Pacient</label>
+            <select id="appt-patient" style="width:100%;border:1px solid #e2e8f0;border-radius:8px;padding:8px;font-size:13px;outline:none">
+              <option value="">— Selectează pacient —</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:12px;font-weight:600;color:#64748b;display:block;margin-bottom:4px">Medic</label>
+            <select id="appt-doctor" style="width:100%;border:1px solid #e2e8f0;border-radius:8px;padding:8px;font-size:13px;outline:none">
+              <option value="Dr. Muradu Alexandru">Dr. Muradu Alexandru</option>
+              <option value="Dr. Muradu Ana">Dr. Muradu Ana</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:12px;font-weight:600;color:#64748b;display:block;margin-bottom:4px">Titlu / Tip vizită</label>
+            <input id="appt-title" placeholder="Ex: Consultație, Igienizare, Obturație..." style="width:100%;border:1px solid #e2e8f0;border-radius:8px;padding:8px;font-size:13px;outline:none">
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div>
+              <label style="font-size:12px;font-weight:600;color:#64748b;display:block;margin-bottom:4px">Data și ora start</label>
+              <input type="datetime-local" id="appt-start" style="width:100%;border:1px solid #e2e8f0;border-radius:8px;padding:8px;font-size:13px;outline:none">
+            </div>
+            <div>
+              <label style="font-size:12px;font-weight:600;color:#64748b;display:block;margin-bottom:4px">Data și ora sfârșit</label>
+              <input type="datetime-local" id="appt-end" style="width:100%;border:1px solid #e2e8f0;border-radius:8px;padding:8px;font-size:13px;outline:none">
+            </div>
+          </div>
+          <div>
+            <label style="font-size:12px;font-weight:600;color:#64748b;display:block;margin-bottom:4px">Culoare</label>
+            <div style="display:flex;gap:8px;flex-wrap:wrap" id="appt-colors">
+              <button onclick="selectApptColor('#0c3560')" data-color="#0c3560" style="width:28px;height:28px;border-radius:50%;background:#0c3560;border:3px solid #0c3560;cursor:pointer"></button>
+              <button onclick="selectApptColor('#16a34a')" data-color="#16a34a" style="width:28px;height:28px;border-radius:50%;background:#16a34a;border:2px solid transparent;cursor:pointer"></button>
+              <button onclick="selectApptColor('#dc2626')" data-color="#dc2626" style="width:28px;height:28px;border-radius:50%;background:#dc2626;border:2px solid transparent;cursor:pointer"></button>
+              <button onclick="selectApptColor('#d97706')" data-color="#d97706" style="width:28px;height:28px;border-radius:50%;background:#d97706;border:2px solid transparent;cursor:pointer"></button>
+              <button onclick="selectApptColor('#7c3aed')" data-color="#7c3aed" style="width:28px;height:28px;border-radius:50%;background:#7c3aed;border:2px solid transparent;cursor:pointer"></button>
+              <button onclick="selectApptColor('#0891b2')" data-color="#0891b2" style="width:28px;height:28px;border-radius:50%;background:#0891b2;border:2px solid transparent;cursor:pointer"></button>
+            </div>
+            <input type="hidden" id="appt-color" value="#0c3560">
+          </div>
+          <div>
+            <label style="font-size:12px;font-weight:600;color:#64748b;display:block;margin-bottom:4px">Note</label>
+            <textarea id="appt-notes" rows="2" placeholder="Note opționale..." style="width:100%;border:1px solid #e2e8f0;border-radius:8px;padding:8px;font-size:13px;font-family:inherit;resize:vertical;outline:none"></textarea>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:4px">
+            <button class="btn btn-primary" onclick="saveAppointment()" style="flex:1;padding:10px">Salvează</button>
+            <button id="appt-delete-btn" class="btn btn-danger hidden" onclick="deleteAppointment()" style="padding:10px 16px">Șterge</button>
+            <button class="btn" onclick="closeAppointmentModal()" style="flex:1;padding:10px">Anulează</button>
           </div>
         </div>
       </div>
@@ -2037,6 +2139,7 @@ function switchTab(tab){
   var sb2=document.getElementById('sbtn-'+tab);if(sb2)sb2.classList.add('active');
   if(tab==='procedures')renderProcedures();
   if(tab==='reminders'){populateReminderPatientSelect();loadReminders();}
+  if(tab==='calendar'){populateApptPatientSelect();loadCalendar();}
 }
 
 // ---- DOCUMENTE + OBSERVATII ----
@@ -2842,6 +2945,267 @@ async function saveNewPassword(){
   }
 }
 // ---- END SCHIMBARE PAROLA ----
+
+// ---- CALENDAR ----
+var cal_date=new Date();
+var cal_appointments=[];
+var cal_selectedColor='#0c3560';
+
+function calNav(dir){
+  var view=document.getElementById('cal-view').value;
+  if(view==='week') cal_date=new Date(cal_date.getTime()+dir*7*24*60*60*1000);
+  else if(view==='day') cal_date=new Date(cal_date.getTime()+dir*24*60*60*1000);
+  else{cal_date.setMonth(cal_date.getMonth()+dir);}
+  loadCalendar();
+}
+
+function calToday(){
+  cal_date=new Date();
+  loadCalendar();
+}
+
+async function loadCalendar(){
+  // Load appointments for visible range
+  var view=document.getElementById('cal-view')?document.getElementById('cal-view').value:'week';
+  var from,to;
+  if(view==='day'){
+    from=new Date(cal_date);from.setHours(0,0,0,0);
+    to=new Date(cal_date);to.setHours(23,59,59,999);
+  } else if(view==='week'){
+    var dow=cal_date.getDay();var diff=cal_date.getDate()-(dow===0?6:dow-1);
+    from=new Date(cal_date);from.setDate(diff);from.setHours(0,0,0,0);
+    to=new Date(from.getTime()+7*24*60*60*1000-1);
+  } else {
+    from=new Date(cal_date.getFullYear(),cal_date.getMonth(),1);
+    to=new Date(cal_date.getFullYear(),cal_date.getMonth()+1,0,23,59,59);
+  }
+  var{data}=await sb.from('appointments').select('*,patients(name,phone)')
+    .gte('start_at',from.toISOString()).lte('start_at',to.toISOString())
+    .order('start_at');
+  cal_appointments=data||[];
+  renderCalendar();
+}
+
+function renderCalendar(){
+  var view=document.getElementById('cal-view')?document.getElementById('cal-view').value:'week';
+  var docFilter=document.getElementById('cal-doctor-filter')?document.getElementById('cal-doctor-filter').value:'';
+  var appts=docFilter?cal_appointments.filter(function(a){return a.doctor===docFilter;}):cal_appointments;
+  if(view==='week') renderWeekView(appts);
+  else if(view==='day') renderDayView(appts);
+  else renderMonthView(appts);
+}
+
+function renderWeekView(appts){
+  var dow=cal_date.getDay();var diff=cal_date.getDate()-(dow===0?6:dow-1);
+  var weekStart=new Date(cal_date);weekStart.setDate(diff);weekStart.setHours(0,0,0,0);
+  var days=[];
+  for(var i=0;i<7;i++){var d=new Date(weekStart.getTime()+i*24*60*60*1000);days.push(d);}
+  var today=new Date();today.setHours(0,0,0,0);
+  var dayNames=['Lun','Mar','Mie','Joi','Vin','Sâm','Dum'];
+  document.getElementById('cal-title').textContent=
+    weekStart.toLocaleDateString('ro-RO',{day:'numeric',month:'long'})+' – '+
+    days[6].toLocaleDateString('ro-RO',{day:'numeric',month:'long',year:'numeric'});
+  var hours=[];for(var h=7;h<=20;h++)hours.push(h);
+  var html='<div style="display:flex;position:sticky;top:0;z-index:2;background:#fff;border-bottom:2px solid #e2e8f0">'
+    +'<div style="width:44px;flex-shrink:0"></div>'
+    +days.map(function(d,i){
+      var isToday=d.getTime()===today.getTime();
+      return'<div class="cal-day-col" style="text-align:center;padding:8px 4px;background:'+(isToday?'#eff6ff':'#fff')+';">'
+        +'<div style="font-size:11px;color:#64748b">'+dayNames[i]+'</div>'
+        +'<div style="font-size:16px;font-weight:700;color:'+(isToday?'#0c3560':'#1e293b')+';width:28px;height:28px;border-radius:50%;background:'+(isToday?'#0c3560':'transparent')+';color:'+(isToday?'#fff':'#1e293b')+';display:flex;align-items:center;justify-content:center;margin:0 auto">'
+        +d.getDate()+'</div></div>';
+    }).join('')+'</div>';
+  html+='<div style="display:flex;overflow-y:auto">'
+    +'<div style="width:44px;flex-shrink:0">'
+    +hours.map(function(h){return'<div class="cal-hour-cell cal-time-label">'+h+':00</div>';}).join('')
+    +'</div>';
+  days.forEach(function(d){
+    var dayAppts=appts.filter(function(a){
+      var ad=new Date(a.start_at);ad.setHours(0,0,0,0);
+      return ad.getTime()===d.getTime();
+    });
+    html+='<div class="cal-day-col" onclick="openAppointmentModalAtTime(\''+d.toISOString()+'\')" style="cursor:pointer">';
+    hours.forEach(function(h){
+      var hourAppts=dayAppts.filter(function(a){return new Date(a.start_at).getHours()===h;});
+      html+='<div class="cal-hour-cell" style="padding:2px 4px">'
+        +hourAppts.map(function(a){
+          var pat=a.patients||{};
+          var startT=new Date(a.start_at).toLocaleTimeString('ro-RO',{hour:'2-digit',minute:'2-digit'});
+          var endT=new Date(a.end_at).toLocaleTimeString('ro-RO',{hour:'2-digit',minute:'2-digit'});
+          return'<div class="cal-event" style="background:'+a.color+'" onclick="event.stopPropagation();editAppointment(\''+a.id+'\')" title="'+esc(pat.name||'')+' — '+esc(a.title)+'">'
+            +startT+'-'+endT+' '+esc(pat.name||a.title)+'</div>';
+        }).join('')
+        +'</div>';
+    });
+    html+='</div>';
+  });
+  html+='</div>';
+  document.getElementById('cal-grid').innerHTML=html;
+}
+
+function renderDayView(appts){
+  var today=new Date(cal_date);today.setHours(0,0,0,0);
+  document.getElementById('cal-title').textContent=cal_date.toLocaleDateString('ro-RO',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  var hours=[];for(var h=7;h<=20;h++)hours.push(h);
+  var dayAppts=appts.filter(function(a){
+    var ad=new Date(a.start_at);ad.setHours(0,0,0,0);return ad.getTime()===today.getTime();
+  });
+  var html='<div style="display:flex">'
+    +'<div style="width:44px;flex-shrink:0">'
+    +hours.map(function(h){return'<div class="cal-hour-cell cal-time-label">'+h+':00</div>';}).join('')
+    +'</div>'
+    +'<div class="cal-day-col" style="min-height:100%" onclick="openAppointmentModalAtTime(\''+cal_date.toISOString()+'\')">>'
+    +hours.map(function(h){
+      var hourAppts=dayAppts.filter(function(a){return new Date(a.start_at).getHours()===h;});
+      return'<div class="cal-hour-cell" style="padding:2px 8px">'
+        +hourAppts.map(function(a){
+          var pat=a.patients||{};
+          var startT=new Date(a.start_at).toLocaleTimeString('ro-RO',{hour:'2-digit',minute:'2-digit'});
+          var endT=new Date(a.end_at).toLocaleTimeString('ro-RO',{hour:'2-digit',minute:'2-digit'});
+          return'<div class="cal-event" style="background:'+a.color+';margin-bottom:4px;padding:6px 8px;font-size:12px" onclick="event.stopPropagation();editAppointment(\''+a.id+'\')">'
+            +'<div style="font-weight:700">'+startT+' – '+endT+'</div>'
+            +'<div>'+esc(pat.name||a.title)+'</div>'
+            +'<div style="opacity:0.85">'+esc(a.title)+'</div>'
+            +(a.doctor?'<div style="opacity:0.75;font-size:10px">'+esc(a.doctor)+'</div>':'')
+            +'</div>';
+        }).join('')
+        +'</div>';
+    }).join('')
+    +'</div></div>';
+  document.getElementById('cal-grid').innerHTML=html;
+}
+
+function renderMonthView(appts){
+  document.getElementById('cal-title').textContent=cal_date.toLocaleDateString('ro-RO',{month:'long',year:'numeric'});
+  var y=cal_date.getFullYear(),m=cal_date.getMonth();
+  var firstDay=new Date(y,m,1).getDay();firstDay=firstDay===0?6:firstDay-1;
+  var daysInMonth=new Date(y,m+1,0).getDate();
+  var today=new Date();today.setHours(0,0,0,0);
+  var dayNames=['Lun','Mar','Mie','Joi','Vin','Sâm','Dum'];
+  var html='<div style="display:grid;grid-template-columns:repeat(7,1fr);border-bottom:2px solid #e2e8f0">'
+    +dayNames.map(function(d){return'<div style="text-align:center;padding:8px;font-size:12px;font-weight:600;color:#64748b">'+d+'</div>';}).join('')
+    +'</div><div style="display:grid;grid-template-columns:repeat(7,1fr);flex:1">';
+  var cells=firstDay;
+  for(var i=0;i<cells;i++) html+='<div style="border:1px solid #f1f5f9;min-height:80px;background:#f8fafc"></div>';
+  for(var day=1;day<=daysInMonth;day++){
+    var d=new Date(y,m,day);d.setHours(0,0,0,0);
+    var isToday=d.getTime()===today.getTime();
+    var dayAppts=appts.filter(function(a){
+      var ad=new Date(a.start_at);ad.setHours(0,0,0,0);return ad.getTime()===d.getTime();
+    });
+    html+='<div style="border:1px solid #f1f5f9;min-height:80px;padding:4px;background:'+(isToday?'#eff6ff':'#fff')+';cursor:pointer" onclick="openAppointmentModalAtTime(\''+d.toISOString()+'\')">'
+      +'<div style="font-size:13px;font-weight:'+(isToday?'700':'500')+';color:'+(isToday?'#0c3560':'#374151')+';margin-bottom:4px;width:24px;height:24px;border-radius:50%;background:'+(isToday?'#0c3560':'transparent')+';color:'+(isToday?'#fff':'#374151')+';display:flex;align-items:center;justify-content:center">'+day+'</div>'
+      +dayAppts.slice(0,3).map(function(a){
+        var pat=a.patients||{};
+        return'<div class="cal-event" style="background:'+a.color+'" onclick="event.stopPropagation();editAppointment(\''+a.id+'\')" title="'+esc(pat.name||a.title)+'">'+esc(pat.name||a.title)+'</div>';
+      }).join('')
+      +(dayAppts.length>3?'<div style="font-size:10px;color:#64748b">+'+( dayAppts.length-3)+' mai multe</div>':'')
+      +'</div>';
+  }
+  html+='</div>';
+  document.getElementById('cal-grid').innerHTML=html;
+}
+
+function populateApptPatientSelect(){
+  var sel=document.getElementById('appt-patient');
+  if(!sel) return;
+  sel.innerHTML='<option value="">— Selectează pacient —</option>'
+    +state.patients.map(function(p){return'<option value="'+p.id+'">'+esc(p.name)+'</option>';}).join('');
+}
+
+function selectApptColor(color){
+  cal_selectedColor=color;
+  document.getElementById('appt-color').value=color;
+  document.querySelectorAll('#appt-colors button').forEach(function(btn){
+    btn.style.border=btn.getAttribute('data-color')===color?'3px solid #0c3560':'2px solid transparent';
+  });
+}
+
+function openAppointmentModal(){
+  populateApptPatientSelect();
+  document.getElementById('appt-id').value='';
+  document.getElementById('appt-patient').value='';
+  document.getElementById('appt-title').value='';
+  document.getElementById('appt-notes').value='';
+  document.getElementById('appt-modal-title').textContent='Programare nouă';
+  document.getElementById('appt-delete-btn').classList.add('hidden');
+  // Default: today, next round hour
+  var now=new Date();now.setMinutes(0,0,0);now.setHours(now.getHours()+1);
+  var end=new Date(now.getTime()+60*60*1000);
+  document.getElementById('appt-start').value=now.toISOString().slice(0,16);
+  document.getElementById('appt-end').value=end.toISOString().slice(0,16);
+  selectApptColor('#0c3560');
+  var modal=document.getElementById('appointment-modal');
+  modal.classList.remove('hidden');modal.style.display='flex';
+}
+
+function openAppointmentModalAtTime(isoDate){
+  openAppointmentModal();
+  var d=new Date(isoDate);d.setHours(9,0,0,0);
+  var end=new Date(d.getTime()+60*60*1000);
+  document.getElementById('appt-start').value=d.toISOString().slice(0,16);
+  document.getElementById('appt-end').value=end.toISOString().slice(0,16);
+}
+
+function editAppointment(id){
+  var a=cal_appointments.find(function(x){return x.id===id;});
+  if(!a) return;
+  populateApptPatientSelect();
+  document.getElementById('appt-id').value=a.id;
+  document.getElementById('appt-patient').value=a.patient_id||'';
+  document.getElementById('appt-doctor').value=a.doctor||'';
+  document.getElementById('appt-title').value=a.title||'';
+  document.getElementById('appt-notes').value=a.notes||'';
+  document.getElementById('appt-start').value=new Date(a.start_at).toISOString().slice(0,16);
+  document.getElementById('appt-end').value=new Date(a.end_at).toISOString().slice(0,16);
+  document.getElementById('appt-modal-title').textContent='Editează programarea';
+  document.getElementById('appt-delete-btn').classList.remove('hidden');
+  selectApptColor(a.color||'#0c3560');
+  var modal=document.getElementById('appointment-modal');
+  modal.classList.remove('hidden');modal.style.display='flex';
+}
+
+async function saveAppointment(){
+  var id=document.getElementById('appt-id').value;
+  var patId=document.getElementById('appt-patient').value;
+  var doctor=document.getElementById('appt-doctor').value;
+  var title=document.getElementById('appt-title').value.trim();
+  var startAt=document.getElementById('appt-start').value;
+  var endAt=document.getElementById('appt-end').value;
+  var color=document.getElementById('appt-color').value||'#0c3560';
+  var notes=document.getElementById('appt-notes').value;
+  if(!title){showNotif('Introdu titlul programării!',false);return;}
+  if(!startAt||!endAt){showNotif('Selectează data și ora!',false);return;}
+  if(new Date(endAt)<=new Date(startAt)){showNotif('Ora de sfârșit trebuie să fie după ora de start!',false);return;}
+  var obj={patient_id:patId||null,doctor:doctor,title:title,start_at:new Date(startAt).toISOString(),end_at:new Date(endAt).toISOString(),color:color,notes:notes};
+  var error;
+  if(id){
+    var res=await sb.from('appointments').update(obj).eq('id',id);
+    error=res.error;
+  } else {
+    var res2=await sb.from('appointments').insert([obj]);
+    error=res2.error;
+  }
+  if(error){showNotif('Eroare: '+error.message,false);return;}
+  showNotif(id?'✓ Programare actualizată!':'✓ Programare salvată!');
+  closeAppointmentModal();
+  await loadCalendar();
+}
+
+async function deleteAppointment(){
+  var id=document.getElementById('appt-id').value;
+  if(!id||!confirm('Ștergi această programare?')) return;
+  await sb.from('appointments').delete().eq('id',id);
+  showNotif('Programare ștearsă.');
+  closeAppointmentModal();
+  await loadCalendar();
+}
+
+function closeAppointmentModal(){
+  var modal=document.getElementById('appointment-modal');
+  modal.classList.add('hidden');modal.style.display='none';
+}
+// ---- END CALENDAR ----
 
 // ---- WHATSAPP TEMPLATES ----
 var wa_patientId=null;
