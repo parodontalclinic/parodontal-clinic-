@@ -1946,6 +1946,31 @@ function renderProcedures(){
   }).join('');
 }
 
+async function autoTranslateProcedure(name){
+  try{
+    var resp=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:500,
+        messages:[{
+          role:'user',
+          content:'Translate this dental procedure name from Romanian into Russian, English, and Italian. Return ONLY a JSON object with keys "ru", "en", "it" and translated strings as values. No other text, no markdown.\n\nProcedure: '+name
+        }]
+      })
+    });
+    if(!resp.ok) return null;
+    var data=await resp.json();
+    var text=(data.content&&data.content[0]&&data.content[0].text)||'';
+    text=text.trim().replace(/```json|```/g,'').trim();
+    return JSON.parse(text);
+  }catch(e){
+    console.warn('Auto-translate failed:',e);
+    return null;
+  }
+}
+
 async function addProcedure(){
   var name=document.getElementById('new-proc-name').value.trim();
   if(!name){showNotif('Introduceți denumirea!',false);return;}
@@ -1954,7 +1979,19 @@ async function addProcedure(){
   if(error){showNotif('Eroare: '+error.message,false);return;}
   state.procedures.push(data);state.procedures.sort(function(a,b){return a.category.localeCompare(b.category)||a.name.localeCompare(b.name);});
   document.getElementById('new-proc-name').value='';document.getElementById('new-proc-price').value='';
-  renderProcedures();updateStats();showNotif('✓ Procedură adăugată!');
+  renderProcedures();updateStats();
+  // Auto-translate in background
+  showNotif('✓ Procedură adăugată! Se traduce...');
+  var translations=await autoTranslateProcedure(name);
+  if(translations&&translations.ru&&translations.en&&translations.it){
+    TRANSLATIONS.ru[name]=translations.ru;
+    TRANSLATIONS.en[name]=translations.en;
+    TRANSLATIONS.it[name]=translations.it;
+    TRANSLATIONS.ro[name]=name;
+    showNotif('✓ Procedură adăugată și tradusă automat!');
+  } else {
+    showNotif('✓ Procedură adăugată! (traducerea manuală necesară)');
+  }
 }
 
 async function deleteProc(id){
