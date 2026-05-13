@@ -2034,7 +2034,7 @@ function renderPdfPreviewWithLang(lang){
     var stageTotalBox=stDisc>0
       ?'<div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px;padding:8px 12px;background:#f0fdf4;border-radius:8px;border:1px solid #86efac">'         +'<div><div style="font-size:11px;color:#64748b">'+t.stageTotal+'</div>'         +'<div style="font-size:12px;color:#94a3b8;text-decoration:line-through">'+fmtCurrency(stTot)+'</div></div>'         +'<div style="text-align:right"><span style="background:#dc2626;color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:999px;margin-bottom:3px;display:inline-block">-'+stDisc+'%</span>'         +'<div style="font-size:15px;font-weight:700;color:#16a34a">'+fmtCurrency(stTotDisc)+'</div></div></div>'
       :'<div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px;padding:8px 12px;background:#e0f2fe;border-radius:8px;border:1px solid #bae6fd">'         +'<span style="font-size:12px;font-weight:600;color:#0369a1">'+t.stageTotal+'</span>'         +'<span style="font-size:15px;font-weight:700;color:#0c3560">'+fmtCurrency(stTot)+'</span></div>';
-    var intervalLabel=stage.months_after&&idx>0?'<span style="font-size:10px;background:#fef9c3;color:#92400e;padding:1px 7px;border-radius:4px;font-weight:600;margin-left:8px">⏱ după '+stage.months_after+(stage.months_after===1?' lună':' luni')+'</span>':'';
+    var intervalLabel=stage.months_after&&idx>0?'<span style="font-size:10px;background:#fef9c3;color:#92400e;padding:1px 7px;border-radius:4px;font-weight:600;margin-left:8px">⏱ după '+stage.months_after+(stage.months_after===1?' lună':' luni')+' de la '+t.stage+' '+idx+'</span>':'';
     return '<div style="margin-bottom:18px">'      +'<div style="font-weight:600;color:#0c3560;margin-bottom:8px;font-size:13px;padding-bottom:6px;border-bottom:1px solid #e2e8f0">'+t.stage+' '+(idx+1)+': '+esc(stage.name)+intervalLabel+'</div>'      +'<table class="pdf-table"><thead><tr><th style="width:28px">✓</th><th>'+t.procedure+'</th><th style="text-align:right">'+t.price+'</th></tr></thead><tbody>'+rows+'</tbody></table>'      +stageTotalBox      +'</div>';
   }).join('');
 
@@ -2176,7 +2176,7 @@ function renderPdfPreviewPatient(lang){
         :t.stageTotal+': '+fmtCurrency(stTot))
       +'</div>';
 
-    var intervalLabelPat=stage.months_after&&idx>0?'<span style="font-size:10px;background:#fef9c3;color:#92400e;padding:1px 7px;border-radius:4px;font-weight:600;margin-left:8px">⏱ după '+stage.months_after+(stage.months_after===1?' lună':' luni')+'</span>':'';
+    var intervalLabelPat=stage.months_after&&idx>0?'<span style="font-size:10px;background:#fef9c3;color:#92400e;padding:1px 7px;border-radius:4px;font-weight:600;margin-left:8px">⏱ după '+stage.months_after+(stage.months_after===1?' lună':' luni')+' de la '+t.stage+' '+idx+'</span>':'';
     return '<div style="margin-bottom:20px">'
       +'<div style="font-weight:700;font-size:14px;color:#0c3560;margin-bottom:8px;padding-bottom:4px;border-bottom:2px solid #0c3560">'+t.stage+' '+(idx+1)+': '+esc(stage.name)+intervalLabelPat+'</div>'
       +linesHtml
