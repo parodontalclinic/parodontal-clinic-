@@ -1969,8 +1969,8 @@ function renderPdfPreviewWithLang(lang){
       var rows='<tr><td colspan="3" style="color:#94a3b8;padding:8px;font-style:italic">—</td></tr>';
     } else {
       // No-tooth items first (no arch header)
-      var noToothPdf=items.filter(function(it){return !it.name.match(/\(d\.\d+\)$/)&&!it.arch&&!it.patient_type;});
-      var withToothPdf=items.filter(function(it){return it.name.match(/\(d\.\d+\)$/)||it.arch||it.patient_type;});
+      var noToothPdf=items.filter(function(it){return !it.name.match(/\(d\.\d+\)$/);});
+      var withToothPdf=items.filter(function(it){return it.name.match(/\(d\.\d+\)$/);});
       var rows='';
       // Group no-tooth items by name+price
       var noToothGroups={};var noToothOrder=[];
@@ -2100,12 +2100,12 @@ function renderPdfPreviewPatient(lang){
     var stTotDisc=disc>0?Math.round(stTot*(1-disc/100)):stTot;
     if(!items.length) return '';
 
-    // Separate items WITHOUT teeth (no arch) from items WITH teeth
+    // Separate by tooth in name — procedures without (d.XX) are standalone
     var noToothItems=items.filter(function(it){
-      return !it.name.match(/\(d\.\d+\)$/) && !it.arch && !it.patient_type;
+      return !it.name.match(/\(d\.\d+\)$/);
     });
     var withToothItems=items.filter(function(it){
-      return it.name.match(/\(d\.\d+\)$/) || it.arch || it.patient_type;
+      return it.name.match(/\(d\.\d+\)$/);
     });
 
     var lineCounter=0;
