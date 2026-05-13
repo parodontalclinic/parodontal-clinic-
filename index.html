@@ -2496,7 +2496,7 @@ async function deleteReceiptSession(patId, sessionKey){
   await generateReceipt();
 }
 
-function printReceiptSession(patId, sessionKey, bonNr){
+async function printReceiptSession(patId, sessionKey, bonNr){
   var pat=state.patients.find(function(p){return p.id===patId;})||{};
 
   function sessKey(dt){
@@ -2505,15 +2505,17 @@ function printReceiptSession(patId, sessionKey, bonNr){
     return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate()+' '+d.getHours()+':'+m;
   }
 
+  // Load fresh from DB — don't rely on state.stages which may be empty on receipt tab
+  var{data:stages}=await sb.from('stages').select('*').eq('patient_id',patId).order('position');
   var allItems=[];
-  state.stages.forEach(function(s){
-    if(s.patient_id!==patId) return;
-    (state.stageItems[s.id]||[]).forEach(function(it){
+  for(var s of (stages||[])){
+    var{data:items}=await sb.from('stage_items').select('*').eq('stage_id',s.id).order('done_at');
+    (items||[]).forEach(function(it){
       if(it.done&&it.done_at&&!it.receipt_deleted){
         allItems.push(Object.assign({},it,{_stageDiscount:s.discount||0}));
       }
     });
-  });
+  }
 
   var sessItems=allItems.filter(function(it){return sessKey(it.done_at)===sessionKey;});
   if(!sessItems.length){showNotif('Nu s-au găsit proceduri pentru acest bon!',false);return;}
@@ -2548,17 +2550,16 @@ function printReceiptSession(patId, sessionKey, bonNr){
       +'</div>'
     :'<div style="font-size:16px;font-weight:700;color:#0c3560">Total: '+fmt(total)+'</div>';
 
-  // Build one copy HTML
   function buildCopy(copyLabel){
     return '<div class="bon-copy">'
       +'<div style="text-align:center;margin-bottom:12px;padding-bottom:10px;border-bottom:2px solid #0c3560">'
       +'<img src="'+LOGO_B64+'" style="height:46px;object-fit:contain;display:block;margin:0 auto 5px">'
-      +'<div style="font-size:11px;color:#64748b">+373 78 766 688 · Chișinău, str. Nicolai Zelinski 15/3</div>'
+      +'<div style="font-size:11px;color:#64748b">+373 78 766 688 \xb7 Chi\u0219in\u0103u, str. Nicolai Zelinski 15/3</div>'
       +'</div>'
       +'<div style="margin-bottom:10px;font-size:13px">'
-      +'<div><strong>Pacient:</strong> '+esc(pat.name||'—')+'</div>'
+      +'<div><strong>Pacient:</strong> '+esc(pat.name||'\u2014')+'</div>'
       +(pat.phone?'<div><strong>Telefon:</strong> '+esc(pat.phone)+'</div>':'')
-      +'<div><strong>Bon #'+bonNr+'</strong> · 📅 '+dateStr+'</div>'
+      +'<div><strong>Bon #'+bonNr+'</strong> \xb7 \ud83d\udcc5 '+dateStr+'</div>'
       +'<div style="font-size:11px;color:#64748b;font-style:italic">'+copyLabel+'</div>'
       +'</div>'
       +rowsHtml
@@ -2566,37 +2567,24 @@ function printReceiptSession(patId, sessionKey, bonNr){
       +totalHtml
       +'</div>'
       +'<div style="margin-top:20px;display:grid;grid-template-columns:1fr 1fr;gap:20px;font-size:11px;color:#64748b">'
-      +'<div style="border-top:1px solid #ccc;padding-top:6px">Semnătura medicului</div>'
-      +'<div style="border-top:1px solid #ccc;padding-top:6px">Semnătura pacientului</div>'
+      +'<div style="border-top:1px solid #ccc;padding-top:6px">Semn\u0103tura medicului</div>'
+      +'<div style="border-top:1px solid #ccc;padding-top:6px">Semn\u0103tura pacientului</div>'
       +'</div>'
       +'</div>';
   }
 
   var w=window.open('','_blank');
   w.document.write('<!DOCTYPE html><html><head><title>Bon #'+bonNr+' - '+esc(pat.name||'')+'</title>');
-  w.document.write('<style>');
-  w.document.write('*{box-sizing:border-box;margin:0;padding:0}');
-  w.document.write('body{font-family:Arial,sans-serif;font-size:13px;padding:16px;max-width:480px;margin:0 auto}');
-  w.document.write('.bon-copy{padding:16px 0}');
-  w.document.write('.separator{border:none;border-top:2px dashed #cbd5e1;margin:16px 0;display:block}');
-  w.document.write('@media print{');
-  w.document.write('  body{padding:8px}');
-  w.document.write('  .bon-copy{break-inside:avoid}');
-  w.document.write('  .separator{break-after:avoid;page-break-after:avoid}');
-  w.document.write('  .page-break{page-break-before:always;break-before:page}');
-  w.document.write('}');
-  w.document.write('</style></head><body>');
-  // Copy 1 — Pacient
+  w.document.write('<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;font-size:13px;padding:16px;max-width:480px;margin:0 auto}.bon-copy{padding:16px 0}.separator{border:none;border-top:2px dashed #cbd5e1;margin:16px 0}@media print{body{padding:8px}.bon-copy{break-inside:avoid}.page-break{page-break-before:always}}</style>');
+  w.document.write('</head><body>');
   w.document.write(buildCopy('Exemplar pentru pacient'));
-  // Separator — dashed line between copies, or page break if large
-  w.document.write('<div class="separator"></div><div class="separator-label" style="text-align:center;font-size:10px;color:#94a3b8;margin:-10px 0 8px;font-style:italic">✂ ─────────────────────────────────────── ✂</div>');
-  // Copy 2 — Clinică (same page if fits, new page if not via CSS)
-  w.document.write('<div class="page-break-if-long">');
-  w.document.write(buildCopy('Exemplar pentru clinică'));
-  w.document.write('</div>');
+  w.document.write('<div class="separator"></div>');
+  w.document.write('<div style="text-align:center;font-size:10px;color:#94a3b8;margin:-10px 0 8px;font-style:italic">\u2702 \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 \u2702</div>');
+  w.document.write(buildCopy('Exemplar pentru clinic\u0103'));
   w.document.write('</body></html>');
   w.document.close();w.focus();setTimeout(function(){w.print();},600);
 }
+
 // ---- END BON DE PLATA ----
 
 // ---- CATALOG REMINDERE ----
