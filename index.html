@@ -1965,18 +1965,37 @@ function renderPdfPreviewWithLang(lang){
     var stTot=stTotal(items);
     var stTotDisc=stDisc>0?Math.round(stTot*(1-stDisc/100)):stTot;
     var pdfGroups=groupItemsByArch(items);
-    var rows=!items.length?'<tr><td colspan="3" style="color:#94a3b8;padding:8px;font-style:italic">—</td></tr>'
-      :pdfGroups.map(function(g){
+    if(!items.length){
+      var rows='<tr><td colspan="3" style="color:#94a3b8;padding:8px;font-style:italic">—</td></tr>';
+    } else {
+      // No-tooth items first (no arch header)
+      var noToothPdf=items.filter(function(it){return !it.name.match(/\(d\.\d+\)$/)&&!it.arch&&!it.patient_type;});
+      var withToothPdf=items.filter(function(it){return it.name.match(/\(d\.\d+\)$/)||it.arch||it.patient_type;});
+      var rows='';
+      // Group no-tooth items by name+price
+      var noToothGroups={};var noToothOrder=[];
+      noToothPdf.forEach(function(it){
+        var tn=getTranslatedName(it.name,lang);
+        var key=tn+'__'+(it.price||0);
+        if(!noToothGroups[key]){noToothGroups[key]={name:tn,price:it.price||0,qty:0};noToothOrder.push(key);}
+        noToothGroups[key].qty++;
+      });
+      noToothOrder.forEach(function(key){
+        var g=noToothGroups[key];
+        var priceStr=g.qty>1?g.qty+'×'+fmtCurrency(g.price)+' = '+fmtCurrency(g.price*g.qty):fmtCurrency(g.price);
+        rows+='<tr><td style="width:28px;text-align:center"><div style="width:16px;height:16px;border:1.5px solid #94a3b8;border-radius:3px;display:inline-block"></div></td><td>'+esc(g.name)+(g.qty>1?' <span style="font-size:10px;color:#64748b">(×'+g.qty+')</span>':'')+'</td><td style="text-align:right;font-weight:600;white-space:nowrap">'+priceStr+'</td></tr>';
+      });
+      var archOnlyGroups=groupItemsByArch(withToothPdf);
+      archOnlyGroups.forEach(function(g){
         var gLabel=archGroupLabel(g.patient_type,g.arch,lang);
         var hasGroup=g.patient_type||g.arch;
-        var groupRow=hasGroup
-          ?'<tr><td colspan="3" style="background:#f1f5f9;padding:5px 10px;font-size:10px;font-weight:700;color:#475569;letter-spacing:0.3px">'+esc(gLabel)+'</td></tr>'
-          :'';
-        return groupRow+g.items.map(function(it){
+        if(hasGroup) rows+='<tr><td colspan="3" style="background:#f1f5f9;padding:5px 10px;font-size:10px;font-weight:700;color:#475569;letter-spacing:0.3px">'+esc(gLabel)+'</td></tr>';
+        g.items.forEach(function(it){
           var translatedName=getTranslatedName(it.name,lang);
-          return'<tr><td style="width:28px;text-align:center"><div style="width:16px;height:16px;border:1.5px solid #94a3b8;border-radius:3px;display:inline-block"></div></td><td>'+esc(translatedName)+'</td><td style="text-align:right;font-weight:600;white-space:nowrap">'+fmtCurrency(it.price||0)+'</td></tr>';
-        }).join('');
-      }).join('');
+          rows+='<tr><td style="width:28px;text-align:center"><div style="width:16px;height:16px;border:1.5px solid #94a3b8;border-radius:3px;display:inline-block"></div></td><td>'+esc(translatedName)+'</td><td style="text-align:right;font-weight:600;white-space:nowrap">'+fmtCurrency(it.price||0)+'</td></tr>';
+        });
+      });
+    }
     var stageTotalBox=stDisc>0
       ?'<div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px;padding:8px 12px;background:#f0fdf4;border-radius:8px;border:1px solid #86efac">'         +'<div><div style="font-size:11px;color:#64748b">'+t.stageTotal+'</div>'         +'<div style="font-size:12px;color:#94a3b8;text-decoration:line-through">'+fmtCurrency(stTot)+'</div></div>'         +'<div style="text-align:right"><span style="background:#dc2626;color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:999px;margin-bottom:3px;display:inline-block">-'+stDisc+'%</span>'         +'<div style="font-size:15px;font-weight:700;color:#16a34a">'+fmtCurrency(stTotDisc)+'</div></div></div>'
       :'<div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px;padding:8px 12px;background:#e0f2fe;border-radius:8px;border:1px solid #bae6fd">'         +'<span style="font-size:12px;font-weight:600;color:#0369a1">'+t.stageTotal+'</span>'         +'<span style="font-size:15px;font-weight:700;color:#0c3560">'+fmtCurrency(stTot)+'</span></div>';
@@ -2012,8 +2031,8 @@ function renderPdfPreviewPatient(lang){
   },0);
   var hasAnyDisc=state.stages.some(function(s){return (s.discount||0)>0;});
 
-  // Helper: group items by name+price, collect teeth
-  function groupProcedures(items){
+  // Helper: group items WITH teeth by name+price, collecting teeth numbers
+  function groupProceduresWithTeeth(items){
     var groups={};var order=[];
     items.forEach(function(it){
       var translated=getTranslatedName(it.name,lang);
@@ -2025,6 +2044,37 @@ function renderPdfPreviewPatient(lang){
       if(toothNum) groups[key].teeth.push(toothNum);
     });
     return order.map(function(k){return groups[k];});
+  }
+
+  // Items WITHOUT teeth: group identical name+price, show qty
+  function renderNoTeethLines(items, startIdx){
+    // Group by name+price
+    var groups={};var order=[];
+    items.forEach(function(it){
+      var translated=getTranslatedName(it.name,lang);
+      var key=translated+'__'+it.price;
+      if(!groups[key]){groups[key]={name:translated,price:it.price||0,qty:0};order.push(key);}
+      groups[key].qty++;
+    });
+    return order.map(function(k,i){
+      var g=groups[k];
+      var priceStr=g.qty>1?g.qty+'×'+fmtCurrency(g.price)+' = '+fmtCurrency(g.price*g.qty):fmtCurrency(g.price);
+      return '<div style="padding:4px 0;border-bottom:1px solid #f1f5f9;display:flex;gap:8px;align-items:baseline">'
+        +'<span style="color:#94a3b8;font-size:11px;min-width:20px">'+(startIdx+i+1)+'.</span>'
+        +'<span style="flex:1;font-size:13px"><u>'+esc(g.name)+'</u></span>'
+        +'<span style="font-size:13px;font-weight:600;color:#0c3560;white-space:nowrap">'+priceStr+'</span>'
+        +'</div>';
+    }).join('');
+  }
+
+  // Count unique no-tooth groups (for lineCounter increment)
+  function countNoTeethGroups(items){
+    var keys={};
+    items.forEach(function(it){
+      var translated=getTranslatedName(it.name,lang);
+      keys[translated+'__'+it.price]=1;
+    });
+    return Object.keys(keys).length;
   }
 
   function renderProcLines(procs, startIdx){
@@ -2050,19 +2100,37 @@ function renderPdfPreviewPatient(lang){
     var stTotDisc=disc>0?Math.round(stTot*(1-disc/100)):stTot;
     if(!items.length) return '';
 
-    // Group by arch first, then group procedures within each arch
-    var archGroups=groupItemsByArch(items);
+    // Separate items WITHOUT teeth (no arch) from items WITH teeth
+    var noToothItems=items.filter(function(it){
+      return !it.name.match(/\(d\.\d+\)$/) && !it.arch && !it.patient_type;
+    });
+    var withToothItems=items.filter(function(it){
+      return it.name.match(/\(d\.\d+\)$/) || it.arch || it.patient_type;
+    });
+
     var lineCounter=0;
-    var linesHtml=archGroups.map(function(ag){
-      var hasArch=ag.patient_type||ag.arch;
-      var archHead=hasArch
-        ?'<div style="font-size:11px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:0.5px;margin:10px 0 4px;padding-left:4px;border-left:3px solid #0c3560">'+esc(archGroupLabel(ag.patient_type,ag.arch,lang))+'</div>'
-        :'';
-      var procs=groupProcedures(ag.items);
-      var rows=renderProcLines(procs,lineCounter);
-      lineCounter+=procs.length;
-      return archHead+rows;
-    }).join('');
+    var linesHtml='';
+
+    // 1. Render no-tooth items FIRST, each as individual line
+    if(noToothItems.length){
+      linesHtml+=renderNoTeethLines(noToothItems,lineCounter);
+      lineCounter+=countNoTeethGroups(noToothItems);
+    }
+
+    // 2. Render arch-grouped items after
+    if(withToothItems.length){
+      var archGroups=groupItemsByArch(withToothItems);
+      linesHtml+=archGroups.map(function(ag){
+        var hasArch=ag.patient_type||ag.arch;
+        var archHead=hasArch
+          ?'<div style="font-size:11px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:0.5px;margin:10px 0 4px;padding-left:4px;border-left:3px solid #0c3560">'+esc(archGroupLabel(ag.patient_type,ag.arch,lang))+'</div>'
+          :'';
+        var procs=groupProceduresWithTeeth(ag.items);
+        var rows=renderProcLines(procs,lineCounter);
+        lineCounter+=procs.length;
+        return archHead+rows;
+      }).join('');
+    }
 
     var stageTotal='<div style="text-align:right;padding:8px 0 0;font-size:13px;font-weight:700;color:#0c3560">'
       +(disc>0
