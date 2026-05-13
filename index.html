@@ -2496,49 +2496,105 @@ async function deleteReceiptSession(patId, sessionKey){
   await generateReceipt();
 }
 
-function printReceiptSession(patId,sessionKey,bonNr){
+function printReceiptSession(patId, sessionKey, bonNr){
   var pat=state.patients.find(function(p){return p.id===patId;})||{};
-  var bonId='bon_'+sessionKey.replace(/[^0-9]/g,'');
-  var card=document.getElementById(bonId);
-  if(!card){showNotif('Eroare la printare!',false);return;}
-  // Extract clean content for print (without buttons/controls)
-  var rows=card.querySelectorAll('[style*="border-bottom:1px solid #f1f5f9"]');
-  var rowsHtml=Array.from(rows).filter(function(r){return r.querySelector('span');}).map(function(r){return r.outerHTML;}).join('');
-  var dateEl=card.querySelector('[style*="11px;color:#64748b"]');
-  var dateStr=dateEl?dateEl.textContent:'';
-  var totalEl=card.querySelector('[style*="font-size:13px;font-weight:700;color:#0c3560"]');
-  var totalStr=totalEl?totalEl.textContent:'';
-  // Payment info
-  var statusEl=card.querySelector('[style*="border-radius:999px"]');
-  var statusStr=statusEl?statusEl.textContent:'';
-  var debtEl=card.querySelector('[style*="color:#dc2626;font-weight:700"]');
-  var debtStr=debtEl?debtEl.textContent:'';
-  var paidEl=card.querySelector('[style*="color:#d97706"]');
-  var paidStr=paidEl?paidEl.textContent:'';
+
+  function sessKey(dt){
+    if(!dt) return 'unknown';
+    var d=new Date(dt);var m=d.getMinutes()<30?0:30;
+    return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate()+' '+d.getHours()+':'+m;
+  }
+
+  var allItems=[];
+  state.stages.forEach(function(s){
+    if(s.patient_id!==patId) return;
+    (state.stageItems[s.id]||[]).forEach(function(it){
+      if(it.done&&it.done_at&&!it.receipt_deleted){
+        allItems.push(Object.assign({},it,{_stageDiscount:s.discount||0}));
+      }
+    });
+  });
+
+  var sessItems=allItems.filter(function(it){return sessKey(it.done_at)===sessionKey;});
+  if(!sessItems.length){showNotif('Nu s-au găsit proceduri pentru acest bon!',false);return;}
+
+  var dateStr=new Date(sessItems[0].done_at).toLocaleString('ro-RO',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+
+  var rowsHtml=sessItems.map(function(it){
+    var disc=it._stageDiscount||0;
+    var priceDisc=Math.round((it.price||0)*(1-disc/100));
+    var priceHtml=disc>0
+      ?'<span style="text-decoration:line-through;color:#94a3b8;font-size:11px;margin-right:4px">'+fmt(it.price||0)+'</span>'
+       +'<strong style="color:#16a34a">'+fmt(priceDisc)+'</strong>'
+      :'<strong>'+fmt(it.price||0)+'</strong>';
+    var doneBy=it.done_by?'<span style="font-size:10px;color:#0c3560;background:#e0f2fe;padding:1px 5px;border-radius:4px;margin-left:4px">'+esc(it.done_by)+'</span>':'';
+    return '<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid #f1f5f9;font-size:12px">'
+      +'<span style="flex:1">'+esc(it.name)+doneBy+'</span>'
+      +'<span style="white-space:nowrap">'+priceHtml+'</span>'
+      +'</div>';
+  }).join('');
+
+  var total=sessItems.reduce(function(a,it){
+    var disc=it._stageDiscount||0;
+    return a+Math.round((it.price||0)*(1-disc/100));
+  },0);
+  var totalBrut=sessItems.reduce(function(a,it){return a+(it.price||0);},0);
+  var hasDisc=total!==totalBrut;
+
+  var totalHtml=hasDisc
+    ?'<div style="text-align:right">'
+      +'<div style="font-size:12px;color:#94a3b8;text-decoration:line-through">'+fmt(totalBrut)+'</div>'
+      +'<div style="font-size:16px;font-weight:700;color:#16a34a">Total cu reducere: '+fmt(total)+'</div>'
+      +'</div>'
+    :'<div style="font-size:16px;font-weight:700;color:#0c3560">Total: '+fmt(total)+'</div>';
+
+  // Build one copy HTML
+  function buildCopy(copyLabel){
+    return '<div class="bon-copy">'
+      +'<div style="text-align:center;margin-bottom:12px;padding-bottom:10px;border-bottom:2px solid #0c3560">'
+      +'<img src="'+LOGO_B64+'" style="height:46px;object-fit:contain;display:block;margin:0 auto 5px">'
+      +'<div style="font-size:11px;color:#64748b">+373 78 766 688 · Chișinău, str. Nicolai Zelinski 15/3</div>'
+      +'</div>'
+      +'<div style="margin-bottom:10px;font-size:13px">'
+      +'<div><strong>Pacient:</strong> '+esc(pat.name||'—')+'</div>'
+      +(pat.phone?'<div><strong>Telefon:</strong> '+esc(pat.phone)+'</div>':'')
+      +'<div><strong>Bon #'+bonNr+'</strong> · 📅 '+dateStr+'</div>'
+      +'<div style="font-size:11px;color:#64748b;font-style:italic">'+copyLabel+'</div>'
+      +'</div>'
+      +rowsHtml
+      +'<div style="margin-top:10px;padding-top:8px;border-top:2px solid #0c3560;display:flex;justify-content:space-between;align-items:center">'
+      +totalHtml
+      +'</div>'
+      +'<div style="margin-top:20px;display:grid;grid-template-columns:1fr 1fr;gap:20px;font-size:11px;color:#64748b">'
+      +'<div style="border-top:1px solid #ccc;padding-top:6px">Semnătura medicului</div>'
+      +'<div style="border-top:1px solid #ccc;padding-top:6px">Semnătura pacientului</div>'
+      +'</div>'
+      +'</div>';
+  }
+
   var w=window.open('','_blank');
   w.document.write('<!DOCTYPE html><html><head><title>Bon #'+bonNr+' - '+esc(pat.name||'')+'</title>');
-  w.document.write('<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;font-size:13px;padding:24px;max-width:420px;margin:0 auto}@media print{body{padding:12px}}');
-  w.document.write('.row{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid #f1f5f9;font-size:12px}');
+  w.document.write('<style>');
+  w.document.write('*{box-sizing:border-box;margin:0;padding:0}');
+  w.document.write('body{font-family:Arial,sans-serif;font-size:13px;padding:16px;max-width:480px;margin:0 auto}');
+  w.document.write('.bon-copy{padding:16px 0}');
+  w.document.write('.separator{border:none;border-top:2px dashed #cbd5e1;margin:16px 0;display:block}');
+  w.document.write('@media print{');
+  w.document.write('  body{padding:8px}');
+  w.document.write('  .bon-copy{break-inside:avoid}');
+  w.document.write('  .separator{break-after:avoid;page-break-after:avoid}');
+  w.document.write('  .page-break{page-break-before:always;break-before:page}');
+  w.document.write('}');
   w.document.write('</style></head><body>');
-  w.document.write('<div style="text-align:center;margin-bottom:16px;padding-bottom:12px;border-bottom:2px solid #0c3560">');
-  w.document.write('<img src="'+LOGO_B64+'" style="height:50px;object-fit:contain;display:block;margin:0 auto 6px">');
-  w.document.write('<div style="font-size:11px;color:#64748b">+373 78 766 688 · Chișinău, str. Nicolai Zelinski 15/3</div>');
+  // Copy 1 — Pacient
+  w.document.write(buildCopy('Exemplar pentru pacient'));
+  // Separator — dashed line between copies, or page break if large
+  w.document.write('<div class="separator"></div><div class="separator-label" style="text-align:center;font-size:10px;color:#94a3b8;margin:-10px 0 8px;font-style:italic">✂ ─────────────────────────────────────── ✂</div>');
+  // Copy 2 — Clinică (same page if fits, new page if not via CSS)
+  w.document.write('<div class="page-break-if-long">');
+  w.document.write(buildCopy('Exemplar pentru clinică'));
   w.document.write('</div>');
-  w.document.write('<div style="margin-bottom:12px;font-size:13px">');
-  w.document.write('<div><strong>Pacient:</strong> '+esc(pat.name||'—')+'</div>');
-  if(pat.phone) w.document.write('<div><strong>Telefon:</strong> '+esc(pat.phone)+'</div>');
-  w.document.write('<div><strong>Bon #'+bonNr+'</strong> · '+esc(dateStr)+'</div>');
-  w.document.write('</div>');
-  w.document.write(rowsHtml);
-  w.document.write('<div style="margin-top:10px;padding-top:8px;border-top:2px solid #0c3560;display:flex;justify-content:space-between;align-items:center">');
-  w.document.write('<strong>'+esc(totalStr)+'</strong>');
-  w.document.write('<span style="font-size:12px">'+esc(statusStr)+'</span>');
-  w.document.write('</div>');
-  if(debtStr) w.document.write('<div style="margin-top:6px;font-size:12px;color:#dc2626;font-weight:700;text-align:right">'+esc(paidStr?paidStr+' · ':'')+esc(debtStr)+'</div>');
-  w.document.write('<div style="margin-top:24px;display:grid;grid-template-columns:1fr 1fr;gap:20px;font-size:11px;color:#64748b">');
-  w.document.write('<div style="border-top:1px solid #ccc;padding-top:6px">Semnătura medicului</div>');
-  w.document.write('<div style="border-top:1px solid #ccc;padding-top:6px">Semnătura pacientului</div>');
-  w.document.write('</div></body></html>');
+  w.document.write('</body></html>');
   w.document.close();w.focus();setTimeout(function(){w.print();},600);
 }
 // ---- END BON DE PLATA ----
