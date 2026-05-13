@@ -1713,7 +1713,33 @@ function renderTreatment(){
     var stTotDisc=disc>0?Math.round(stTot*(1-disc/100)):stTot;
     var discOpts='<option value="0"'+(disc===0?' selected':'')+'>Fără reducere</option>';
     for(var d2=1;d2<=20;d2++) discOpts+='<option value="'+d2+'"'+(disc===d2?' selected':'')+'>'+d2+'%</option>';
-    return '<div class="stage-block">'      +'<div class="stage-header">'      +'<div style="font-weight:600;color:#0c3560;font-size:14px">'+esc(stage.name)+'</div>'      +'<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">'      +'<select style="font-size:12px;padding:3px 6px;border-radius:6px;border:1px solid #e2e8f0;color:#0c3560;width:auto;cursor:pointer" onchange="saveStageDiscount(\''+stage.id+'\',this.value)">'+discOpts+'</select>'      +'<span class="stage-badge-total" data-sid="'+stage.id+'">'      +(disc>0        ?'<span style="font-size:12px;color:#94a3b8;text-decoration:line-through">'+fmt(stTot)+'</span>'         +' <span style="background:#dcfce7;color:#16a34a;font-weight:700;font-size:13px;padding:4px 10px;border-radius:8px;border:1px solid #86efac">'+fmt(stTotDisc)+'</span>'        :'<span style="background:#e0f2fe;color:#0369a1;font-weight:700;font-size:13px;padding:4px 10px;border-radius:8px;border:1px solid #bae6fd">'+fmt(stTot)+'</span>')      +'</span>'      +'<button class="btn btn-danger" onclick="deleteStage(\''+stage.id+'\')" style="padding:4px 10px;font-size:11px">Șterge etapă</button>'      +'</div></div>'+itemsHtml+'</div>';
+    var stageIdx=state.stages.indexOf(stage);
+    var monthsAfter=stage.months_after||null;
+    var monthsOpts='<option value="">— după câte luni —</option>';
+    for(var mo=1;mo<=12;mo++) monthsOpts+='<option value="'+mo+'"'+(monthsAfter===mo?' selected':'')+'>'+mo+(mo===1?' lună':' luni')+'</option>';
+    var intervalBadge=stageIdx>0
+      ?'<div style="display:flex;align-items:center;gap:4px;background:#fef9c3;border:1px solid #fde68a;border-radius:7px;padding:3px 8px">'
+        +'<span style="font-size:11px;color:#92400e;white-space:nowrap">⏱ Interval:</span>'
+        +'<select style="font-size:11px;padding:2px 4px;border-radius:5px;border:1px solid #fde68a;color:#92400e;background:#fef9c3;cursor:pointer" onchange="saveStageMonths(\''+stage.id+'\',this.value)">'+monthsOpts+'</select>'
+        +(monthsAfter?'<span style="font-size:11px;color:#92400e;font-weight:600">după Etapa '+(stageIdx)+'</span>':'')
+        +'</div>'
+      :'';
+    return '<div class="stage-block">'
+      +'<div class="stage-header">'
+      +'<div style="display:flex;flex-direction:column;gap:4px">'
+      +'<div style="font-weight:600;color:#0c3560;font-size:14px">'+esc(stage.name)+'</div>'
+      +intervalBadge
+      +'</div>'
+      +'<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">'
+      +'<select style="font-size:12px;padding:3px 6px;border-radius:6px;border:1px solid #e2e8f0;color:#0c3560;width:auto;cursor:pointer" onchange="saveStageDiscount(\''+stage.id+'\',this.value)">'+discOpts+'</select>'
+      +'<span class="stage-badge-total" data-sid="'+stage.id+'">'
+      +(disc>0
+        ?'<span style="font-size:12px;color:#94a3b8;text-decoration:line-through">'+fmt(stTot)+'</span>'
+         +' <span style="background:#dcfce7;color:#16a34a;font-weight:700;font-size:13px;padding:4px 10px;border-radius:8px;border:1px solid #86efac">'+fmt(stTotDisc)+'</span>'
+        :'<span style="background:#e0f2fe;color:#0369a1;font-weight:700;font-size:13px;padding:4px 10px;border-radius:8px;border:1px solid #bae6fd">'+fmt(stTot)+'</span>')
+      +'</span>'
+      +'<button class="btn btn-danger" onclick="deleteStage(\''+stage.id+'\')" style="padding:4px 10px;font-size:11px">Șterge etapă</button>'
+      +'</div></div>'+itemsHtml+'</div>';
     }).join('');
   var gt=grandTotal();
   var gtWithDisc=state.stages.reduce(function(a,s){
@@ -1750,6 +1776,15 @@ function getDoctor(){
   var sel=document.getElementById('sel-doctor');
   return sel?sel.value:'';
 }
+async function saveStageMonths(stageId, months){
+  var val=months?parseInt(months):null;
+  await sb.from('stages').update({months_after:val}).eq('id',stageId);
+  var s=state.stages.find(function(s){return s.id===stageId;});
+  if(s) s.months_after=val;
+  renderTreatment();
+  showNotif(val?'✓ Interval salvat: '+val+(val===1?' lună':' luni'):'Interval eliminat.');
+}
+
 async function saveStageDiscount(stageId,disc){
   disc=parseInt(disc)||0;
   await sb.from('stages').update({discount:disc}).eq('id',stageId);
@@ -1999,7 +2034,8 @@ function renderPdfPreviewWithLang(lang){
     var stageTotalBox=stDisc>0
       ?'<div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px;padding:8px 12px;background:#f0fdf4;border-radius:8px;border:1px solid #86efac">'         +'<div><div style="font-size:11px;color:#64748b">'+t.stageTotal+'</div>'         +'<div style="font-size:12px;color:#94a3b8;text-decoration:line-through">'+fmtCurrency(stTot)+'</div></div>'         +'<div style="text-align:right"><span style="background:#dc2626;color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:999px;margin-bottom:3px;display:inline-block">-'+stDisc+'%</span>'         +'<div style="font-size:15px;font-weight:700;color:#16a34a">'+fmtCurrency(stTotDisc)+'</div></div></div>'
       :'<div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px;padding:8px 12px;background:#e0f2fe;border-radius:8px;border:1px solid #bae6fd">'         +'<span style="font-size:12px;font-weight:600;color:#0369a1">'+t.stageTotal+'</span>'         +'<span style="font-size:15px;font-weight:700;color:#0c3560">'+fmtCurrency(stTot)+'</span></div>';
-    return '<div style="margin-bottom:18px">'      +'<div style="font-weight:600;color:#0c3560;margin-bottom:8px;font-size:13px;padding-bottom:6px;border-bottom:1px solid #e2e8f0">'+t.stage+' '+(idx+1)+': '+esc(stage.name)+'</div>'      +'<table class="pdf-table"><thead><tr><th style="width:28px">✓</th><th>'+t.procedure+'</th><th style="text-align:right">'+t.price+'</th></tr></thead><tbody>'+rows+'</tbody></table>'      +stageTotalBox      +'</div>';
+    var intervalLabel=stage.months_after&&idx>0?'<span style="font-size:10px;background:#fef9c3;color:#92400e;padding:1px 7px;border-radius:4px;font-weight:600;margin-left:8px">⏱ după '+stage.months_after+(stage.months_after===1?' lună':' luni')+'</span>':'';
+    return '<div style="margin-bottom:18px">'      +'<div style="font-weight:600;color:#0c3560;margin-bottom:8px;font-size:13px;padding-bottom:6px;border-bottom:1px solid #e2e8f0">'+t.stage+' '+(idx+1)+': '+esc(stage.name)+intervalLabel+'</div>'      +'<table class="pdf-table"><thead><tr><th style="width:28px">✓</th><th>'+t.procedure+'</th><th style="text-align:right">'+t.price+'</th></tr></thead><tbody>'+rows+'</tbody></table>'      +stageTotalBox      +'</div>';
   }).join('');
 
   var grandTotalBox=hasAnyDisc
@@ -2140,8 +2176,9 @@ function renderPdfPreviewPatient(lang){
         :t.stageTotal+': '+fmtCurrency(stTot))
       +'</div>';
 
+    var intervalLabelPat=stage.months_after&&idx>0?'<span style="font-size:10px;background:#fef9c3;color:#92400e;padding:1px 7px;border-radius:4px;font-weight:600;margin-left:8px">⏱ după '+stage.months_after+(stage.months_after===1?' lună':' luni')+'</span>':'';
     return '<div style="margin-bottom:20px">'
-      +'<div style="font-weight:700;font-size:14px;color:#0c3560;margin-bottom:8px;padding-bottom:4px;border-bottom:2px solid #0c3560">'+t.stage+' '+(idx+1)+': '+esc(stage.name)+'</div>'
+      +'<div style="font-weight:700;font-size:14px;color:#0c3560;margin-bottom:8px;padding-bottom:4px;border-bottom:2px solid #0c3560">'+t.stage+' '+(idx+1)+': '+esc(stage.name)+intervalLabelPat+'</div>'
       +linesHtml
       +stageTotal
       +'</div>';
