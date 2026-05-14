@@ -749,7 +749,7 @@ tr:last-child td{border-bottom:none}
               <img src="https://www.gstatic.com/images/branding/product/1x/calendar_2020q4_32dp.png" style="width:16px;height:16px">
               <span id="gcal-btn-label">Conectează Google Calendar</span>
             </button>
-            <button id="gcal-import-btn" onclick="syncFromGoogle()" class="hidden" style="font-size:12px;padding:6px 14px;border-radius:7px;border:1.5px solid #16a34a;background:#f0fdf4;cursor:pointer;display:flex;align-items:center;gap:6px;font-weight:600;color:#16a34a">
+            <button id="gcal-import-btn" onclick="importFromGoogleWithRefresh()" class="hidden" style="font-size:12px;padding:6px 14px;border-radius:7px;border:1.5px solid #16a34a;background:#f0fdf4;cursor:pointer;display:flex;align-items:center;gap:6px;font-weight:600;color:#16a34a">
               ⟳ Import din Google
             </button>
           </div>
@@ -3438,23 +3438,18 @@ var gcal_accessToken=null;
 var gcal_calendarId='primary';
 var gcal_syncing=false;
 
+function importFromGoogleWithRefresh(){
+  // Always get a fresh token before importing
+  requestGoogleToken(function(){
+    syncFromGoogle();
+  });
+}
+
 function initGoogleCalendar(){
   if(!window.google||!window.google.accounts) return;
-  gcal_tokenClient=window.google.accounts.oauth2.initTokenClient({
-    client_id:GCAL_CLIENT_ID,
-    scope:GCAL_SCOPES,
-    callback:function(resp){
-      if(resp.error){showNotif('Eroare Google: '+resp.error,false);return;}
-      gcal_accessToken=resp.access_token;
-      localStorage.setItem('gcal_token',resp.access_token);
-      updateGcalBtn(true);
-      syncAllToGoogle();
-    }
-  });
-  // Restore token if exists
-  var saved=localStorage.getItem('gcal_token');
-  if(saved){gcal_accessToken=saved;updateGcalBtn(true);}
+  updateGcalBtn(false); // Start disconnected, require explicit connect
 }
+
 
 function updateGcalBtn(connected){
   var btn=document.getElementById('gcal-btn');
@@ -3480,20 +3475,38 @@ function toggleGoogleCalendar(){
     updateGcalBtn(false);
     showNotif('Google Calendar deconectat.');
   } else {
-    // Connect
-    if(!gcal_tokenClient){
-      // Load Google Identity Services
-      var script=document.createElement('script');
-      script.src='https://accounts.google.com/gsi/client';
-      script.onload=function(){
-        initGoogleCalendar();
-        setTimeout(function(){if(gcal_tokenClient)gcal_tokenClient.requestAccessToken();},500);
-      };
-      document.head.appendChild(script);
-    } else {
-      gcal_tokenClient.requestAccessToken();
-    }
+    requestGoogleToken(function(){
+      syncFromGoogle();
+    });
   }
+}
+
+function requestGoogleToken(callback){
+  if(!window.google||!window.google.accounts){
+    // Load GSI script first
+    var script=document.createElement('script');
+    script.src='https://accounts.google.com/gsi/client';
+    script.onload=function(){
+      setTimeout(function(){initGoogleCalendarClient(callback);},300);
+    };
+    document.head.appendChild(script);
+  } else {
+    initGoogleCalendarClient(callback);
+  }
+}
+
+function initGoogleCalendarClient(callback){
+  gcal_tokenClient=window.google.accounts.oauth2.initTokenClient({
+    client_id:GCAL_CLIENT_ID,
+    scope:GCAL_SCOPES,
+    callback:function(resp){
+      if(resp.error){showNotif('Eroare Google: '+resp.error,false);return;}
+      gcal_accessToken=resp.access_token;
+      updateGcalBtn(true);
+      if(callback) callback();
+    }
+  });
+  gcal_tokenClient.requestAccessToken({prompt:''});
 }
 
 async function gcalFetch(url, method, body){
