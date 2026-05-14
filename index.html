@@ -1531,7 +1531,15 @@ function renderPatients(){
       +'<div style="display:flex;align-items:start;justify-content:space-between;gap:6px">'
       +'<div style="flex:1;min-width:0">'
       +'<div style="font-weight:600;font-size:13px;color:#0c3560">'+esc(p.name)+'</div>'
-      +'<div style="font-size:12px;color:#64748b;margin-top:2px">'+esc(p.phone||'—')+'</div>'
+      +'<div style="display:flex;align-items:center;gap:4px;margin-top:4px" onclick="event.stopPropagation()">'
+      +'<input id="phone-'+p.id+'" type="tel" value="'+esc(p.phone||'')+'" placeholder="+373 ..." '
+      +'onkeydown="if(event.key===\'Enter\')savePatientPhone(\''+p.id+'\')" '
+      +'onblur="savePatientPhone(\''+p.id+'\')" '
+      +'style="flex:1;font-size:12px;color:#64748b;border:1px solid transparent;border-radius:6px;padding:3px 6px;background:transparent;outline:none;min-width:0;cursor:text" '
+      +'onfocus="this.style.borderColor=\'#0c3560\';this.style.background=\'#fff\'" '
+      +'>'
+      +'<svg onclick="document.getElementById(\'phone-'+p.id+'\').focus()" width="12" height="12" fill="none" stroke="#94a3b8" stroke-width="2" viewBox="0 0 24 24" style="flex-shrink:0;cursor:pointer"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>'
+      +'</div>'
       +'<div style="font-size:12px;margin-top:8px"><strong>Diagnostic:</strong> '+esc(p.diagnosis||'—')+'</div>'
       +debtHtml
       +'</div>'
@@ -1547,6 +1555,21 @@ function renderPatients(){
         :'')
       +'</div>';
   }).join('');
+}
+
+async function savePatientPhone(patId){
+  var input=document.getElementById('phone-'+patId);
+  if(!input) return;
+  var newPhone=input.value.trim();
+  var pat=state.patients.find(function(p){return p.id===patId;});
+  if(!pat||pat.phone===newPhone) return;
+  input.style.borderColor='transparent';input.style.background='transparent';
+  var{error}=await sb.from('patients').update({phone:newPhone}).eq('id',patId);
+  if(error){showNotif('Eroare: '+error.message,false);return;}
+  pat.phone=newPhone;
+  // Re-render only this card's WA button without full re-render
+  renderPatients();
+  showNotif('✓ Telefon actualizat!');
 }
 
 async function deletePatient(id, name){
