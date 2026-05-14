@@ -272,7 +272,8 @@ tr:last-child td{border-bottom:none}
         <div class="card">
           <div class="card-title">Pacient nou</div>
           <div class="card-sub">Adaugă pacientul în sistem</div>
-          <label>Nume complet</label><input id="p-name" placeholder="Ex: Ion Popescu">
+          <label>Nume de familie</label><input id="p-lastname" placeholder="Ex: Popescu">
+          <label>Prenume</label><input id="p-firstname" placeholder="Ex: Ion">
           <label>Telefon</label><input id="p-phone" placeholder="+373 ...">
           <label>Diagnostic</label><textarea id="p-diag" placeholder="Descriere diagnostic..."></textarea>
           <label>Observații</label><textarea id="p-notes" placeholder="Note suplimentare..."></textarea>
@@ -1607,14 +1608,16 @@ async function selectPatient(id){
 }
 
 async function addPatient(){
-  var name=document.getElementById('p-name').value.trim();
+  var lastname=document.getElementById('p-lastname').value.trim();
+  var firstname=document.getElementById('p-firstname').value.trim();
+  var name=(lastname+' '+firstname).trim();
   if(!name){showNotif('Introduceți numele!',false);return;}
   var obj={name,phone:document.getElementById('p-phone').value,diagnosis:document.getElementById('p-diag').value,notes:document.getElementById('p-notes').value};
   var{data,error}=await sb.from('patients').insert([obj]).select().single();
   if(error){showNotif('Eroare: '+error.message,false);return;}
   state.patients.push(data);
   state.patients.sort(function(a,b){return (a.name||'').localeCompare(b.name||'','ro');});
-  ['p-name','p-phone','p-diag','p-notes'].forEach(function(id){document.getElementById(id).value='';});
+  ['p-lastname','p-firstname','p-phone','p-diag','p-notes'].forEach(function(id){document.getElementById(id).value='';});
   state.selectedPatientId=data.id;state.stages=[];state.stageItems={};state.activeStageId=null;
   populatePatientSelect();renderPdfPatientSelect();renderPatients();renderTreatment();updateStats();
   showNotif('✓ Pacient salvat!');
