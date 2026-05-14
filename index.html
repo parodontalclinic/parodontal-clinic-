@@ -3627,9 +3627,14 @@ async function syncFromGoogle(){
         await sb.from('appointments').update({title:ev.summary||'(fără titlu)',start_at:startAt,end_at:endAt,notes:ev.description||''}).eq('gcal_event_id',ev.id);
         updated++;
       } else {
+        // Detect doctor from calendar name
+        var evDoctor='';
+        if(/muradu.*alex/i.test(cal.summary)) evDoctor='Dr. Muradu Alexandru';
+        else if(/muradu.*ana/i.test(cal.summary)) evDoctor='Dr. Muradu Ana';
+        var evColor=getDoctorColor(evDoctor)||'#64748b';
         var{error}=await sb.from('appointments').insert([{
           title:ev.summary||'(fără titlu)',start_at:startAt,end_at:endAt,
-          doctor:'',color:'#64748b',notes:ev.description||'',gcal_event_id:ev.id
+          doctor:evDoctor,color:evColor,notes:ev.description||'',gcal_event_id:ev.id
         }]);
         if(!error) imported++;
       }
