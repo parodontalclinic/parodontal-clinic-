@@ -160,6 +160,7 @@ tr:last-child td{border-bottom:none}
 .rem-plan{font-size:11px;color:#64748b;margin-top:6px;padding:8px;background:rgba(0,0,0,0.03);border-radius:6px}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/interact.js/1.10.27/interact.min.js"></script>
+<script src="https://apis.google.com/js/api.js"></script>
 </head>
 <body>
 <div class="notif" id="notif"></div>
@@ -744,6 +745,10 @@ tr:last-child td{border-bottom:none}
               <option value="Dr. Muradu Ana">Dr. Muradu Ana</option>
             </select>
             <button class="btn btn-primary" onclick="openAppointmentModal()" style="font-size:12px;padding:6px 14px">+ Programare nouă</button>
+            <button id="gcal-btn" onclick="toggleGoogleCalendar()" style="font-size:12px;padding:6px 14px;border-radius:7px;border:1.5px solid #e2e8f0;background:#fff;cursor:pointer;display:flex;align-items:center;gap:6px;font-weight:600;color:#374151">
+              <img src="https://www.gstatic.com/images/branding/product/1x/calendar_2020q4_32dp.png" style="width:16px;height:16px">
+              <span id="gcal-btn-label">Conectează Google Calendar</span>
+            </button>
           </div>
           <!-- Legenda medici -->
           <div style="display:flex;gap:12px;align-items:center;padding:6px 0" id="cal-legend"></div>
@@ -1505,6 +1510,10 @@ function showApp(){
   loadReminderTypes();
   startRealtimeSync();
   loadDoctorColors();
+  // Init Google Calendar (delayed to allow gsi script to load)
+  setTimeout(function(){
+    if(window.google&&window.google.accounts) initGoogleCalendar();
+  },1500);
 }
 
 function startRealtimeSync(){
@@ -3413,6 +3422,162 @@ async function saveNewPassword(){
 // ---- END SCHIMBARE PAROLA ----
 
 
+// ---- GOOGLE CALENDAR SYNC ----
+var GCAL_CLIENT_ID='148817469137-2ouhi7d0es0rf0lultn60qkfvnbd1t4v.apps.googleusercontent.com';
+var GCAL_SCOPES='https://www.googleapis.com/auth/calendar';
+var gcal_tokenClient=null;
+var gcal_accessToken=null;
+var gcal_calendarId='primary';
+var gcal_syncing=false;
+
+function initGoogleCalendar(){
+  if(!window.google||!window.google.accounts) return;
+  gcal_tokenClient=window.google.accounts.oauth2.initTokenClient({
+    client_id:GCAL_CLIENT_ID,
+    scope:GCAL_SCOPES,
+    callback:function(resp){
+      if(resp.error){showNotif('Eroare Google: '+resp.error,false);return;}
+      gcal_accessToken=resp.access_token;
+      localStorage.setItem('gcal_token',resp.access_token);
+      updateGcalBtn(true);
+      syncAllToGoogle();
+    }
+  });
+  // Restore token if exists
+  var saved=localStorage.getItem('gcal_token');
+  if(saved){gcal_accessToken=saved;updateGcalBtn(true);}
+}
+
+function updateGcalBtn(connected){
+  var btn=document.getElementById('gcal-btn');
+  var lbl=document.getElementById('gcal-btn-label');
+  if(!btn||!lbl) return;
+  if(connected){
+    btn.style.borderColor='#16a34a';btn.style.background='#f0fdf4';btn.style.color='#16a34a';
+    lbl.textContent='Google Calendar: Activ';
+  } else {
+    btn.style.borderColor='#e2e8f0';btn.style.background='#fff';btn.style.color='#374151';
+    lbl.textContent='Conectează Google Calendar';
+  }
+}
+
+function toggleGoogleCalendar(){
+  if(gcal_accessToken){
+    // Disconnect
+    gcal_accessToken=null;
+    localStorage.removeItem('gcal_token');
+    updateGcalBtn(false);
+    showNotif('Google Calendar deconectat.');
+  } else {
+    // Connect
+    if(!gcal_tokenClient){
+      // Load Google Identity Services
+      var script=document.createElement('script');
+      script.src='https://accounts.google.com/gsi/client';
+      script.onload=function(){
+        initGoogleCalendar();
+        setTimeout(function(){if(gcal_tokenClient)gcal_tokenClient.requestAccessToken();},500);
+      };
+      document.head.appendChild(script);
+    } else {
+      gcal_tokenClient.requestAccessToken();
+    }
+  }
+}
+
+async function gcalFetch(url, method, body){
+  if(!gcal_accessToken) return null;
+  var opts={method:method||'GET',headers:{'Authorization':'Bearer '+gcal_accessToken,'Content-Type':'application/json'}};
+  if(body) opts.body=JSON.stringify(body);
+  var resp=await fetch(url,opts);
+  if(resp.status===401){gcal_accessToken=null;localStorage.removeItem('gcal_token');updateGcalBtn(false);return null;}
+  if(!resp.ok) return null;
+  return resp.json();
+}
+
+async function syncAllToGoogle(){
+  if(!gcal_accessToken||gcal_syncing) return;
+  gcal_syncing=true;
+  showNotif('⟳ Sincronizare Google Calendar...');
+  try{
+    // Get all appointments from Supabase
+    var{data:appts}=await sb.from('appointments').select('*,patients(name,phone)').order('start_at');
+    if(!appts||!appts.length){showNotif('Nicio programare de sincronizat.');gcal_syncing=false;return;}
+    var synced=0;
+    for(var a of appts){
+      await syncApptToGoogle(a);
+      synced++;
+    }
+    showNotif('✓ '+synced+' programări sincronizate cu Google Calendar!');
+    await syncFromGoogle();
+  }catch(e){showNotif('Eroare sincronizare: '+e.message,false);}
+  gcal_syncing=false;
+}
+
+async function syncApptToGoogle(appt){
+  if(!gcal_accessToken) return;
+  var pat=appt.patients||{};
+  var event={
+    summary:(pat.name?pat.name+' — ':'')+appt.title,
+    description:(appt.notes||'')+(appt.doctor?'\nMedic: '+appt.doctor:''),
+    start:{dateTime:appt.start_at,timeZone:'Europe/Chisinau'},
+    end:{dateTime:appt.end_at,timeZone:'Europe/Chisinau'},
+    colorId:gcalColorId(appt.color),
+    extendedProperties:{private:{supabaseId:appt.id}}
+  };
+  // Check if already synced
+  var gcalId=appt.gcal_event_id;
+  if(gcalId){
+    await gcalFetch('https://www.googleapis.com/calendar/v3/calendars/'+gcal_calendarId+'/events/'+gcalId,'PUT',event);
+  } else {
+    var created=await gcalFetch('https://www.googleapis.com/calendar/v3/calendars/'+gcal_calendarId+'/events','POST',event);
+    if(created&&created.id){
+      await sb.from('appointments').update({gcal_event_id:created.id}).eq('id',appt.id);
+    }
+  }
+}
+
+async function syncFromGoogle(){
+  if(!gcal_accessToken) return;
+  var now=new Date();
+  var min=new Date(now.getFullYear(),now.getMonth()-1,1).toISOString();
+  var max=new Date(now.getFullYear(),now.getMonth()+3,1).toISOString();
+  var data=await gcalFetch(
+    'https://www.googleapis.com/calendar/v3/calendars/'+gcal_calendarId+'/events?timeMin='+min+'&timeMax='+max+'&singleEvents=true&orderBy=startTime'
+  );
+  if(!data||!data.items) return;
+  for(var ev of data.items){
+    if(!ev.start||!ev.start.dateTime) continue;
+    // Skip events already in Supabase (have supabaseId)
+    var supId=ev.extendedProperties&&ev.extendedProperties.private&&ev.extendedProperties.private.supabaseId;
+    if(supId) continue;
+    // Check if exists by gcal_event_id
+    var{data:existing}=await sb.from('appointments').select('id').eq('gcal_event_id',ev.id).single();
+    if(existing) continue;
+    // Add to Supabase
+    await sb.from('appointments').insert([{
+      title:ev.summary||'(fără titlu)',
+      start_at:ev.start.dateTime,
+      end_at:ev.end.dateTime||ev.start.dateTime,
+      doctor:'',color:'#0c3560',notes:ev.description||'',
+      gcal_event_id:ev.id
+    }]);
+  }
+  await loadCalendar();
+}
+
+function gcalColorId(hex){
+  // Map hex colors to Google Calendar color IDs
+  var map={'#0c3560':'9','#7c3aed':'3','#16a34a':'2','#dc2626':'11','#d97706':'5','#0891b2':'7'};
+  return map[hex]||'9';
+}
+
+async function deleteGcalEvent(gcalEventId){
+  if(!gcal_accessToken||!gcalEventId) return;
+  await gcalFetch('https://www.googleapis.com/calendar/v3/calendars/'+gcal_calendarId+'/events/'+gcalEventId,'DELETE');
+}
+// ---- END GOOGLE CALENDAR SYNC ----
+
 // ---- DOCTOR COLORS ----
 var DOCTOR_COLORS={
   'Dr. Muradu Alexandru':'#0c3560',
@@ -3810,12 +3975,23 @@ async function saveAppointment(){
   showNotif(id?'✓ Programare actualizată!':'✓ Programare salvată!');
   closeAppointmentModal();
   await loadCalendar();
+  // Sync to Google Calendar if connected
+  if(gcal_accessToken){
+    var{data:saved}=await sb.from('appointments').select('*,patients(name,phone)').eq(id?'id':'title',id||title).order('created_at',{ascending:false}).limit(1);
+    if(saved&&saved[0]) await syncApptToGoogle(saved[0]);
+  }
 }
 
 async function deleteAppointment(){
   var id=document.getElementById('appt-id').value;
   if(!id||!confirm('Ștergi această programare?')) return;
+  // Get gcal_event_id before delete
+  var appt=cal_appointments.find(function(a){return a.id===id;});
   await sb.from('appointments').delete().eq('id',id);
+  // Delete from Google Calendar too
+  if(gcal_accessToken&&appt&&appt.gcal_event_id){
+    await deleteGcalEvent(appt.gcal_event_id);
+  }
   showNotif('Programare ștearsă.');
   closeAppointmentModal();
   await loadCalendar();
