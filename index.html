@@ -1239,8 +1239,8 @@ function groupItemsByArch(items){
     if(!groups[key]) groups[key]={patient_type:pt,arch:ar,items:[]};
     groups[key].items.push(it);
   });
-  // Order: adult_superior, adult_inferior, copil_superior, copil_inferior, none
-  var order=['adult_superior','adult_inferior','copil_superior','copil_inferior','none'];
+  // Order: no-arch first, then adult_superior, adult_inferior, copil_superior, copil_inferior
+  var order=['none','adult_superior','adult_inferior','copil_superior','copil_inferior'];
   var result=[];
   order.forEach(function(k){if(groups[k])result.push(groups[k]);});
   Object.keys(groups).forEach(function(k){if(order.indexOf(k)<0)result.push(groups[k]);});
@@ -1374,8 +1374,8 @@ async function addAllToplan(){
   state.activeStageId=stageId;
   var added=0;
   for(var c of cart){
-    var patType=c.patType||'adult';
-    var arch=c.arch||'';
+    var patType=c.teeth.length>0?(c.patType||'adult'):'';
+    var arch=c.teeth.length>0?(c.arch||''):'';
     if(c.teeth.length===0){
       var obj={stage_id:stageId,name:c.proc.name,price:c.proc.price,category:c.proc.category,explanation:'',patient_type:patType,arch:arch};
       var{data,error}=await sb.from('stage_items').insert([obj]).select().single();
@@ -1764,8 +1764,14 @@ function renderTreatment(){
   document.getElementById('stages-editor').innerHTML=state.stages.map(function(stage){
     var items=state.stageItems[stage.id]||[];
     var disc=stage.discount||0;
-    var groups=groupItemsByArch(items);
-    var itemsHtml=items.length?groups.map(function(g){
+    // Separate no-tooth items (no arch, no patient_type) from arch items
+    var noToothTreat=items.filter(function(it){return !it.name.match(/\(d\.\d+\)$/);});
+    var withToothTreat=items.filter(function(it){return it.name.match(/\(d\.\d+\)$/);});
+    var groups=groupItemsByArch(withToothTreat);
+    var allGroups=[];
+    if(noToothTreat.length) allGroups.push({patient_type:'',arch:'',items:noToothTreat});
+    groups.forEach(function(g){allGroups.push(g);});
+    var itemsHtml=items.length?allGroups.map(function(g){
       var gLabel=archGroupLabel(g.patient_type,g.arch,'ro');
       var hasGroup=g.patient_type||g.arch;
       var groupHead=hasGroup?'<div style="font-size:11px;font-weight:600;color:#475569;background:#f1f5f9;padding:4px 10px;border-radius:6px;margin-bottom:4px;margin-top:10px;display:inline-block">'+esc(gLabel)+'</div>':'';
