@@ -3504,9 +3504,10 @@ function initGoogleCalendarClient(callback){
       gcal_accessToken=resp.access_token;
       updateGcalBtn(true);
       if(callback) callback();
-    }
+    },
+    prompt:'select_account'
   });
-  gcal_tokenClient.requestAccessToken({prompt:''});
+  gcal_tokenClient.requestAccessToken();
 }
 
 async function gcalFetch(url, method, body){
