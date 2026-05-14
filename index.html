@@ -1419,7 +1419,7 @@ function startRealtimeSync(){
 async function loadAll(){
   try{
     var[{data:patients,error:e1},{data:procedures,error:e2}]=await Promise.all([
-      sb.from('patients').select('*').order('created_at',{ascending:false}),
+      sb.from('patients').select('*').order('name',{ascending:true}),
       sb.from('procedures').select('*').order('category').order('name')
     ]);
     if(e1)throw e1;
@@ -1612,7 +1612,8 @@ async function addPatient(){
   var obj={name,phone:document.getElementById('p-phone').value,diagnosis:document.getElementById('p-diag').value,notes:document.getElementById('p-notes').value};
   var{data,error}=await sb.from('patients').insert([obj]).select().single();
   if(error){showNotif('Eroare: '+error.message,false);return;}
-  state.patients.unshift(data);
+  state.patients.push(data);
+  state.patients.sort(function(a,b){return (a.name||'').localeCompare(b.name||'','ro');});
   ['p-name','p-phone','p-diag','p-notes'].forEach(function(id){document.getElementById(id).value='';});
   state.selectedPatientId=data.id;state.stages=[];state.stageItems={};state.activeStageId=null;
   populatePatientSelect();renderPdfPatientSelect();renderPatients();renderTreatment();updateStats();
