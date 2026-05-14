@@ -3638,9 +3638,13 @@ async function syncFromGoogle(){
 
   await loadCalendar();
   if(totalFound===0){
-    showNotif('Google Calendar este gol (niciun eveniment găsit în '+( cals.items||[]).length+' calendare: '+calNames+').');
+    showNotif('Google Calendar este gol în perioada mai 2025 - aug 2026 ('+( cals.items||[]).length+' calendare scanate).');
   } else {
-    showNotif('✓ Google Calendar: '+imported+' noi, '+updated+' actualizate din '+totalFound+' evenimente găsite.');
+    showNotif('✓ GCal: '+imported+' noi + '+updated+' actualizate din '+totalFound+' events. Navighează la datele programărilor!');
+    // Navigate to first imported event's date if any
+    if(imported>0){
+      showNotif('✓ '+imported+' programări importate! Navighează la data lor în calendar.');
+    }
   }
 }
 
