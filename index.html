@@ -3499,10 +3499,16 @@ function initGoogleCalendarClient(callback){
   gcal_tokenClient=window.google.accounts.oauth2.initTokenClient({
     client_id:GCAL_CLIENT_ID,
     scope:GCAL_SCOPES,
+    login_hint:'parodontalclinic@gmail.com',
     callback:function(resp){
       if(resp.error){showNotif('Eroare Google: '+resp.error,false);return;}
       gcal_accessToken=resp.access_token;
       updateGcalBtn(true);
+      // Verify which account we got
+      gcalFetch('https://www.googleapis.com/oauth2/v3/userinfo').then(function(info){
+        if(info) console.log('Connected as:',info.email);
+        showNotif('✓ Conectat ca: '+(info?info.email:'unknown'));
+      });
       if(callback) callback();
     },
     prompt:'select_account'
