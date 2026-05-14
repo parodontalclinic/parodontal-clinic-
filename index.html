@@ -749,6 +749,9 @@ tr:last-child td{border-bottom:none}
               <img src="https://www.gstatic.com/images/branding/product/1x/calendar_2020q4_32dp.png" style="width:16px;height:16px">
               <span id="gcal-btn-label">Conectează Google Calendar</span>
             </button>
+            <button id="gcal-import-btn" onclick="syncFromGoogle()" class="hidden" style="font-size:12px;padding:6px 14px;border-radius:7px;border:1.5px solid #16a34a;background:#f0fdf4;cursor:pointer;display:flex;align-items:center;gap:6px;font-weight:600;color:#16a34a">
+              ⟳ Import din Google
+            </button>
           </div>
           <!-- Legenda medici -->
           <div style="display:flex;gap:12px;align-items:center;padding:6px 0" id="cal-legend"></div>
@@ -2570,7 +2573,12 @@ function switchTab(tab){
   var sb2=document.getElementById('sbtn-'+tab);if(sb2)sb2.classList.add('active');
   if(tab==='procedures')renderProcedures();
   if(tab==='reminders'){populateReminderPatientSelect();loadReminders();}
-  if(tab==='calendar'){populateApptPatientSelect();loadCalendar();}
+  if(tab==='calendar'){
+    populateApptPatientSelect();
+    loadCalendar().then(function(){
+      if(gcal_accessToken) syncFromGoogle();
+    });
+  }
 }
 
 // ---- DOCUMENTE + OBSERVATII ----
@@ -3451,13 +3459,16 @@ function initGoogleCalendar(){
 function updateGcalBtn(connected){
   var btn=document.getElementById('gcal-btn');
   var lbl=document.getElementById('gcal-btn-label');
+  var importBtn=document.getElementById('gcal-import-btn');
   if(!btn||!lbl) return;
   if(connected){
     btn.style.borderColor='#16a34a';btn.style.background='#f0fdf4';btn.style.color='#16a34a';
     lbl.textContent='Google Calendar: Activ';
+    if(importBtn) importBtn.classList.remove('hidden');
   } else {
     btn.style.borderColor='#e2e8f0';btn.style.background='#fff';btn.style.color='#374151';
     lbl.textContent='Conectează Google Calendar';
+    if(importBtn) importBtn.classList.add('hidden');
   }
 }
 
@@ -3543,26 +3554,34 @@ async function syncFromGoogle(){
   var min=new Date(now.getFullYear(),now.getMonth()-1,1).toISOString();
   var max=new Date(now.getFullYear(),now.getMonth()+3,1).toISOString();
   var data=await gcalFetch(
-    'https://www.googleapis.com/calendar/v3/calendars/'+gcal_calendarId+'/events?timeMin='+min+'&timeMax='+max+'&singleEvents=true&orderBy=startTime'
+    'https://www.googleapis.com/calendar/v3/calendars/'+gcal_calendarId+'/events?timeMin='+encodeURIComponent(min)+'&timeMax='+encodeURIComponent(max)+'&singleEvents=true&orderBy=startTime&maxResults=250'
   );
-  if(!data||!data.items) return;
+  if(!data||!data.items){
+    showNotif('Nu s-au găsit evenimente în Google Calendar.',false);
+    return;
+  }
+  var imported=0;
   for(var ev of data.items){
-    if(!ev.start||!ev.start.dateTime) continue;
-    // Skip events already in Supabase (have supabaseId)
+    if(!ev.start||!ev.start.dateTime) continue; // skip all-day events
+    // Skip events already synced FROM this app (have supabaseId)
     var supId=ev.extendedProperties&&ev.extendedProperties.private&&ev.extendedProperties.private.supabaseId;
     if(supId) continue;
-    // Check if exists by gcal_event_id
-    var{data:existing}=await sb.from('appointments').select('id').eq('gcal_event_id',ev.id).single();
-    if(existing) continue;
-    // Add to Supabase
-    await sb.from('appointments').insert([{
+    // Check if already in Supabase by gcal_event_id
+    var{data:existing}=await sb.from('appointments').select('id').eq('gcal_event_id',ev.id);
+    if(existing&&existing.length) continue;
+    // Import into Supabase
+    var{error}=await sb.from('appointments').insert([{
       title:ev.summary||'(fără titlu)',
       start_at:ev.start.dateTime,
-      end_at:ev.end.dateTime||ev.start.dateTime,
-      doctor:'',color:'#0c3560',notes:ev.description||'',
+      end_at:ev.end&&ev.end.dateTime?ev.end.dateTime:new Date(new Date(ev.start.dateTime).getTime()+60*60*1000).toISOString(),
+      doctor:'',
+      color:'#64748b',
+      notes:ev.description||'',
       gcal_event_id:ev.id
     }]);
+    if(!error) imported++;
   }
+  if(imported>0) showNotif('✓ '+imported+' programări importate din Google Calendar!');
   await loadCalendar();
 }
 
