@@ -811,6 +811,27 @@ tr:last-child td{border-bottom:none}
       </div>
     </div>
 
+    <!-- AUTO-REMINDER MODAL -->
+    <div id="auto-reminder-modal" class="hidden" style="position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:10000;display:flex;align-items:center;justify-content:center;padding:16px" onclick="closeAutoReminderModal()">
+      <div style="background:#fff;border-radius:16px;width:100%;max-width:440px;box-shadow:0 24px 80px rgba(0,0,0,0.3);overflow:hidden" onclick="event.stopPropagation()">
+        <div style="background:linear-gradient(135deg,#0c3560,#185fa5);padding:20px 24px;color:#fff">
+          <div style="font-size:18px;font-weight:700;margin-bottom:4px">🔔 Reminder automat</div>
+          <div style="font-size:13px;opacity:0.85" id="auto-reminder-subtitle"></div>
+        </div>
+        <div style="padding:20px 24px">
+          <div style="font-size:14px;color:#374151;margin-bottom:16px" id="auto-reminder-body"></div>
+          <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:12px;margin-bottom:16px;font-size:13px;color:#1e40af">
+            <div style="font-weight:600;margin-bottom:4px">📅 Reminder propus:</div>
+            <div id="auto-reminder-details" style="color:#1e3a8a"></div>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button onclick="confirmAutoReminder()" style="flex:1;padding:11px;border-radius:8px;border:none;background:#0c3560;color:#fff;font-size:14px;font-weight:700;cursor:pointer">✓ Da, creează reminder</button>
+            <button onclick="closeAutoReminderModal()" style="flex:1;padding:11px;border-radius:8px;border:1px solid #e2e8f0;background:#fff;font-size:14px;font-weight:600;cursor:pointer;color:#64748b">✕ Nu acum</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- WHATSAPP MODAL -->
     <div id="wa-modal" class="hidden" style="position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px" onclick="closeWaModal()">
       <div style="background:#fff;border-radius:16px;width:100%;max-width:520px;max-height:90vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 24px 80px rgba(0,0,0,0.3)" onclick="event.stopPropagation()">
@@ -1828,6 +1849,72 @@ async function saveStageDiscount(stageId,disc){
   renderPdfPreview();
 }
 
+// ---- AUTO REMINDER ----
+var AUTO_REMINDER_KEYWORDS=[
+  {match:/igienizare/i, type:'Igienizare profesională periodică', months:6},
+  {match:/implant dentar/i, type:'Control implant dentar', months:6},
+  {match:/all.?on.?6/i, type:'Control All-on-6', months:6},
+  {match:/all.?on.?4/i, type:'Control All-on-4', months:6},
+  {match:/proteза fixa.*implant/i, type:'Control proteză fixă pe implanturi', months:6},
+  {match:/sinus lifting/i, type:'Control sinus lifting', months:6},
+];
+var autoReminderPending=null;
+
+function checkAutoReminder(itemName, patientId, itemId){
+  for(var i=0;i<AUTO_REMINDER_KEYWORDS.length;i++){
+    var rule=AUTO_REMINDER_KEYWORDS[i];
+    if(rule.match.test(itemName)){
+      var pat=state.patients.find(function(p){return p.id===patientId;});
+      if(!pat) return;
+      var remDate=new Date();
+      remDate.setMonth(remDate.getMonth()+rule.months);
+      autoReminderPending={
+        patientId:patientId,
+        patientName:pat.name,
+        type:rule.type,
+        months:rule.months,
+        remindAt:remDate,
+        itemName:itemName
+      };
+      // Show modal
+      document.getElementById('auto-reminder-subtitle').textContent='Procedură efectuată: '+itemName;
+      document.getElementById('auto-reminder-body').textContent=
+        'Pacientul '+pat.name+' tocmai a efectuat această procedură. Doriți să creați automat un reminder de control?';
+      document.getElementById('auto-reminder-details').innerHTML=
+        '<strong>Tip:</strong> '+rule.type+'<br>'
+        +'<strong>Data:</strong> '+remDate.toLocaleDateString('ro-RO',{day:'2-digit',month:'long',year:'numeric'})
+        +' (peste '+rule.months+' luni)';
+      var modal=document.getElementById('auto-reminder-modal');
+      modal.classList.remove('hidden');modal.style.display='flex';
+      return;
+    }
+  }
+}
+
+async function confirmAutoReminder(){
+  if(!autoReminderPending) return;
+  var p=autoReminderPending;
+  var{error}=await sb.from('reminders').insert([{
+    patient_id:p.patientId,
+    type:p.type,
+    note:'Reminder automat după procedura: '+p.itemName,
+    remind_at:p.remindAt.toISOString(),
+    status:'active'
+  }]);
+  if(error){showNotif('Eroare reminder: '+error.message,false);}
+  else{showNotif('✓ Reminder creat pentru '+p.patientName+' — '+p.remindAt.toLocaleDateString('ro-RO'));}
+  closeAutoReminderModal();
+  await loadReminders();
+  updateReminderBadge();
+}
+
+function closeAutoReminderModal(){
+  var modal=document.getElementById('auto-reminder-modal');
+  modal.classList.add('hidden');modal.style.display='none';
+  autoReminderPending=null;
+}
+// ---- END AUTO REMINDER ----
+
 async function toggleDone(itemId){
   var newDone=!state.doneItems[itemId];
   var doneAt=newDone?new Date().toISOString():null;
@@ -1835,12 +1922,19 @@ async function toggleDone(itemId){
   if(newDone) state.doneItems[itemId]=doneAt;
   else delete state.doneItems[itemId];
   await sb.from('stage_items').update({done:newDone,done_at:doneAt,done_by:doneBy}).eq('id',itemId);
+  // Find item name and patient
+  var itemName='';
   for(var sid in state.stageItems){
     state.stageItems[sid]=state.stageItems[sid].map(function(it){
-      return it.id===itemId?Object.assign({},it,{done:newDone,done_at:doneAt,done_by:doneBy}):it;
+      if(it.id===itemId){itemName=it.name;return Object.assign({},it,{done:newDone,done_at:doneAt,done_by:doneBy});}
+      return it;
     });
   }
   renderTreatment();
+  // Check if we need to propose auto-reminder (only when marking as done)
+  if(newDone && itemName && state.selectedPatientId){
+    checkAutoReminder(itemName, state.selectedPatientId, itemId);
+  }
 }
 
 async function saveDoneBy(itemId,doctor){
