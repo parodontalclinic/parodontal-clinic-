@@ -813,19 +813,48 @@ tr:last-child td{border-bottom:none}
 
     <!-- AUTO-REMINDER MODAL -->
     <div id="auto-reminder-modal" class="hidden" style="position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:10000;display:flex;align-items:center;justify-content:center;padding:16px" onclick="closeAutoReminderModal()">
-      <div style="background:#fff;border-radius:16px;width:100%;max-width:440px;box-shadow:0 24px 80px rgba(0,0,0,0.3);overflow:hidden" onclick="event.stopPropagation()">
+      <div style="background:#fff;border-radius:16px;width:100%;max-width:460px;box-shadow:0 24px 80px rgba(0,0,0,0.3);overflow:hidden" onclick="event.stopPropagation()">
         <div style="background:linear-gradient(135deg,#0c3560,#185fa5);padding:20px 24px;color:#fff">
           <div style="font-size:18px;font-weight:700;margin-bottom:4px">🔔 Reminder automat</div>
           <div style="font-size:13px;opacity:0.85" id="auto-reminder-subtitle"></div>
         </div>
-        <div style="padding:20px 24px">
-          <div style="font-size:14px;color:#374151;margin-bottom:16px" id="auto-reminder-body"></div>
-          <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:12px;margin-bottom:16px;font-size:13px;color:#1e40af">
-            <div style="font-weight:600;margin-bottom:4px">📅 Reminder propus:</div>
-            <div id="auto-reminder-details" style="color:#1e3a8a"></div>
+        <div style="padding:20px 24px;display:flex;flex-direction:column;gap:12px">
+          <div style="font-size:14px;color:#374151" id="auto-reminder-body"></div>
+
+          <div>
+            <label style="font-size:12px;font-weight:600;color:#64748b;display:block;margin-bottom:4px">Tip reminder</label>
+            <select id="auto-rem-type" style="width:100%;border:1px solid #e2e8f0;border-radius:8px;padding:8px 10px;font-size:13px;outline:none">
+              <option value="">— Selectează tipul —</option>
+            </select>
           </div>
-          <div style="display:flex;gap:8px">
-            <button onclick="confirmAutoReminder()" style="flex:1;padding:11px;border-radius:8px;border:none;background:#0c3560;color:#fff;font-size:14px;font-weight:700;cursor:pointer">✓ Da, creează reminder</button>
+
+          <div>
+            <label style="font-size:12px;font-weight:600;color:#64748b;display:block;margin-bottom:4px">Interval</label>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+              <select id="auto-rem-num" style="border:1px solid #e2e8f0;border-radius:8px;padding:8px 10px;font-size:13px;outline:none" onchange="updateAutoReminderDate()">
+                <option value="1">1</option><option value="2">2</option>
+                <option value="3">3</option><option value="6" selected>6</option>
+                <option value="9">9</option><option value="12">12</option>
+                <option value="18">18</option><option value="24">24</option>
+              </select>
+              <select id="auto-rem-unit" style="border:1px solid #e2e8f0;border-radius:8px;padding:8px 10px;font-size:13px;outline:none" onchange="updateAutoReminderDate()">
+                <option value="zile">Zile</option>
+                <option value="saptamani">Săptămâni</option>
+                <option value="luni" selected>Luni</option>
+                <option value="ani">Ani</option>
+              </select>
+            </div>
+          </div>
+
+          <div id="auto-rem-date-preview" style="font-size:12px;color:#0c3560;padding:6px 10px;background:#eff6ff;border-radius:6px;border:1px solid #bfdbfe"></div>
+
+          <div>
+            <label style="font-size:12px;font-weight:600;color:#64748b;display:block;margin-bottom:4px">Notă (opțional)</label>
+            <input id="auto-rem-note" placeholder="Ex: Control după implant..." style="width:100%;border:1px solid #e2e8f0;border-radius:8px;padding:8px 10px;font-size:13px;outline:none">
+          </div>
+
+          <div style="display:flex;gap:8px;margin-top:4px">
+            <button onclick="confirmAutoReminder()" style="flex:1;padding:11px;border-radius:8px;border:none;background:#0c3560;color:#fff;font-size:14px;font-weight:700;cursor:pointer">✓ Creează reminder</button>
             <button onclick="closeAutoReminderModal()" style="flex:1;padding:11px;border-radius:8px;border:1px solid #e2e8f0;background:#fff;font-size:14px;font-weight:600;cursor:pointer;color:#64748b">✕ Nu acum</button>
           </div>
         </div>
@@ -1866,24 +1895,31 @@ function checkAutoReminder(itemName, patientId, itemId){
     if(rule.match.test(itemName)){
       var pat=state.patients.find(function(p){return p.id===patientId;});
       if(!pat) return;
-      var remDate=new Date();
-      remDate.setMonth(remDate.getMonth()+rule.months);
-      autoReminderPending={
-        patientId:patientId,
-        patientName:pat.name,
-        type:rule.type,
-        months:rule.months,
-        remindAt:remDate,
-        itemName:itemName
-      };
-      // Show modal
+      autoReminderPending={patientId:patientId,patientName:pat.name,itemName:itemName};
+
+      // Populate type selector from catalog
+      var sel=document.getElementById('auto-rem-type');
+      sel.innerHTML='<option value="">— Selectează tipul —</option>'
+        +state_reminderTypes.map(function(t){
+          return'<option value="'+esc(t.name)+'"'+(t.name===rule.type?' selected':'')+'>'+esc(t.name)+'</option>';
+        }).join('');
+      // If rule type not in catalog, add it as option
+      if(!state_reminderTypes.find(function(t){return t.name===rule.type;})){
+        sel.innerHTML+='<option value="'+esc(rule.type)+'" selected>'+esc(rule.type)+'</option>';
+      }
+
+      // Set default interval
+      document.getElementById('auto-rem-num').value=String(rule.months);
+      document.getElementById('auto-rem-unit').value='luni';
+      document.getElementById('auto-rem-note').value='Reminder automat după: '+itemName;
+
+      // Update header
       document.getElementById('auto-reminder-subtitle').textContent='Procedură efectuată: '+itemName;
       document.getElementById('auto-reminder-body').textContent=
-        'Pacientul '+pat.name+' tocmai a efectuat această procedură. Doriți să creați automat un reminder de control?';
-      document.getElementById('auto-reminder-details').innerHTML=
-        '<strong>Tip:</strong> '+rule.type+'<br>'
-        +'<strong>Data:</strong> '+remDate.toLocaleDateString('ro-RO',{day:'2-digit',month:'long',year:'numeric'})
-        +' (peste '+rule.months+' luni)';
+        'Pacientul '+pat.name+' tocmai a efectuat această procedură. Configurează și creează un reminder de control:';
+
+      updateAutoReminderDate();
+
       var modal=document.getElementById('auto-reminder-modal');
       modal.classList.remove('hidden');modal.style.display='flex';
       return;
@@ -1891,18 +1927,40 @@ function checkAutoReminder(itemName, patientId, itemId){
   }
 }
 
+function updateAutoReminderDate(){
+  var num=parseInt(document.getElementById('auto-rem-num').value)||6;
+  var unit=document.getElementById('auto-rem-unit').value||'luni';
+  var d=new Date();
+  if(unit==='zile') d.setDate(d.getDate()+num);
+  else if(unit==='saptamani') d.setDate(d.getDate()+num*7);
+  else if(unit==='luni') d.setMonth(d.getMonth()+num);
+  else if(unit==='ani') d.setFullYear(d.getFullYear()+num);
+  var el=document.getElementById('auto-rem-date-preview');
+  if(el) el.textContent='📅 Data reminder: '+d.toLocaleDateString('ro-RO',{day:'2-digit',month:'long',year:'numeric'});
+}
+
 async function confirmAutoReminder(){
   if(!autoReminderPending) return;
+  var type=document.getElementById('auto-rem-type').value;
+  if(!type){showNotif('Selectează tipul de reminder!',false);return;}
+  var num=parseInt(document.getElementById('auto-rem-num').value)||6;
+  var unit=document.getElementById('auto-rem-unit').value||'luni';
+  var note=document.getElementById('auto-rem-note').value;
+  var d=new Date();
+  if(unit==='zile') d.setDate(d.getDate()+num);
+  else if(unit==='saptamani') d.setDate(d.getDate()+num*7);
+  else if(unit==='luni') d.setMonth(d.getMonth()+num);
+  else if(unit==='ani') d.setFullYear(d.getFullYear()+num);
   var p=autoReminderPending;
   var{error}=await sb.from('reminders').insert([{
     patient_id:p.patientId,
-    type:p.type,
-    note:'Reminder automat după procedura: '+p.itemName,
-    remind_at:p.remindAt.toISOString(),
+    type:type,
+    note:note,
+    remind_at:d.toISOString(),
     status:'active'
   }]);
   if(error){showNotif('Eroare reminder: '+error.message,false);}
-  else{showNotif('✓ Reminder creat pentru '+p.patientName+' — '+p.remindAt.toLocaleDateString('ro-RO'));}
+  else{showNotif('✓ Reminder creat pentru '+p.patientName+' — '+d.toLocaleDateString('ro-RO'));}
   closeAutoReminderModal();
   await loadReminders();
   updateReminderBadge();
