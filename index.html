@@ -83,6 +83,8 @@ tr:last-child td{border-bottom:none}
 .item-row{display:grid;grid-template-columns:36px 1fr 110px 80px;gap:8px;align-items:start;background:#f8fafc;border-radius:8px;padding:10px;margin-bottom:8px;transition:background 0.15s}
 .item-row.done{background:#f0fdf4}
 .item-row.done .item-name{text-decoration:line-through;color:#94a3b8}
+.item-row.dragging{opacity:0.4;border:2px dashed #0c3560}
+.stage-block.drag-over{border:2px dashed #0c3560;background:#eff6ff}
 .item-name{font-size:13px;font-weight:500;color:#1e293b;transition:all 0.15s}
 .item-price{font-size:13px;color:#0c3560;font-weight:600;text-align:right}
 .item-check{width:22px;height:22px;border:2px solid #cbd5e1;border-radius:5px;background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.15s;flex-shrink:0}
@@ -1878,7 +1880,7 @@ function renderTreatment(){
             +'</select>'
             +'</div>'
           :'';
-        return '<div class="item-row'+(done?' done':'')+'">'
+        return '<div class="item-row'+(done?' done':'')+'" draggable="true" id="item-row-'+item.id+'" ondragstart="onItemDragStart(event,\''+item.id+'\',\''+stage.id+'\')" ondragover="event.preventDefault()">'
           +'<div class="item-check'+(done?' checked':'')+'" onclick="toggleDone(\''+item.id+'\')" style="margin-top:2px">'
           +'<svg viewBox="0 0 14 14" fill="none" stroke="#fff" stroke-width="2.5"><polyline points="2,7 6,11 12,3"/></svg>'
           +'</div>'
@@ -1892,6 +1894,7 @@ function renderTreatment(){
     var discOpts='<option value="0"'+(disc===0?' selected':'')+'>Fără reducere</option>';
     for(var d2=1;d2<=20;d2++) discOpts+='<option value="'+d2+'"'+(disc===d2?' selected':'')+'>'+d2+'%</option>';
     var stageIdx=state.stages.indexOf(stage);
+    var stageIdStr=stage.id;
     var monthsAfter=stage.months_after||null;
     var durationDays=stage.duration_days||null;
     var monthsOpts='<option value="">— după câte luni —</option>';
@@ -1909,7 +1912,7 @@ function renderTreatment(){
       +'<span style="font-size:11px;color:#92400e;white-space:nowrap">📅 Durată:</span>'
       +'<select style="font-size:11px;padding:2px 4px;border-radius:5px;border:1px solid #fde68a;color:#92400e;background:#fef9c3;cursor:pointer" onchange="saveStageDuration(\''+stage.id+'\',this.value)">'+durationOpts+'</select>'
       +'</div>';
-    return '<div class="stage-block">'
+    return '<div class="stage-block" ondragover="onStageDragOver(event)" ondrop="onItemDrop(event,\''+stageIdStr+'\')" ondragleave="onStageDragLeave(event)">'
       +'<div class="stage-header">'
       +'<div style="display:flex;flex-direction:column;gap:4px">'
       +'<div style="font-weight:600;color:#0c3560;font-size:14px">'+esc(stage.name)+'</div>'
@@ -3450,6 +3453,55 @@ async function saveNewPassword(){
 }
 // ---- END SCHIMBARE PAROLA ----
 
+
+// ---- DRAG & DROP TREATMENT ITEMS ----
+var dragItem={id:null,fromStageId:null};
+
+function onItemDragStart(e,itemId,stageId){
+  dragItem={id:itemId,fromStageId:stageId};
+  e.dataTransfer.effectAllowed='move';
+  var el=document.getElementById('item-row-'+itemId);
+  if(el) setTimeout(function(){el.classList.add('dragging');},0);
+}
+
+function onStageDragOver(e){
+  e.preventDefault();
+  e.dataTransfer.dropEffect='move';
+  var stageBlock=e.currentTarget;
+  if(stageBlock) stageBlock.classList.add('drag-over');
+}
+
+function onStageDragLeave(e){
+  var stageBlock=e.currentTarget;
+  if(stageBlock) stageBlock.classList.remove('drag-over');
+}
+
+async function onItemDrop(e,toStageId){
+  e.preventDefault();
+  var stageBlock=e.currentTarget;
+  if(stageBlock) stageBlock.classList.remove('drag-over');
+  if(!dragItem.id||dragItem.fromStageId===toStageId) return;
+  var itemId=dragItem.id;
+  var fromStageId=dragItem.fromStageId;
+  dragItem={id:null,fromStageId:null};
+  // Move item to new stage in DB
+  var{error}=await sb.from('stage_items').update({stage_id:toStageId}).eq('id',itemId);
+  if(error){showNotif('Eroare la mutare: '+error.message,false);return;}
+  // Update local state
+  var item=null;
+  if(state.stageItems[fromStageId]){
+    item=state.stageItems[fromStageId].find(function(it){return it.id===itemId;});
+    state.stageItems[fromStageId]=state.stageItems[fromStageId].filter(function(it){return it.id!==itemId;});
+  }
+  if(item){
+    item.stage_id=toStageId;
+    if(!state.stageItems[toStageId]) state.stageItems[toStageId]=[];
+    state.stageItems[toStageId].push(item);
+  }
+  renderTreatment();updateStats();
+  showNotif('✓ Procedură mutată!');
+}
+// ---- END DRAG & DROP TREATMENT ITEMS ----
 
 // ---- GOOGLE CALENDAR SYNC ----
 var GCAL_CLIENT_ID='148817469137-2ouhi7d0es0rf0lultn60qkfvnbd1t4v.apps.googleusercontent.com';
