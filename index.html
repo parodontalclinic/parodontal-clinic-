@@ -1857,9 +1857,20 @@ async function savePatientPhone(patId){
 
 async function deletePatient(id, name){
   if(!confirm('Muți pacientul "'+name+'" în coșul de gunoi?\n\nPoți să-l restaurezi oricând din tab-ul Coș gunoi.')) return;
-  // Save to trash first
   var pat=state.patients.find(function(p){return p.id===id;})||{};
-  await moveToTrash('patient', pat, pat.name||'Pacient');
+
+  // Load all stages and items for this patient
+  var{data:stages}=await sb.from('stages').select('*').eq('patient_id',id).order('position');
+  var fullStages=[];
+  for(var s of (stages||[])){
+    var{data:items}=await sb.from('stage_items').select('*').eq('stage_id',s.id);
+    fullStages.push(Object.assign({},s,{_items:items||[]}));
+  }
+
+  // Save full patient data to trash (including stages + items)
+  var fullPatData=Object.assign({},pat,{_stages:fullStages});
+  await moveToTrash('patient', fullPatData, pat.name||'Pacient');
+
   var{error}=await sb.from('patients').delete().eq('id',id);
   if(error){showNotif('Eroare: '+error.message,false);return;}
   state.patients=state.patients.filter(function(p){return p.id!==id;});
@@ -1868,7 +1879,7 @@ async function deletePatient(id, name){
     state.stages=[];state.stageItems={};state.doneItems={};state.activeStageId=null;
   }
   populatePatientSelect();renderPdfPatientSelect();renderPatients();renderTreatment();updateStats();
-  showNotif('✓ Pacient mutat în coșul de gunoi. Poate fi restaurat!');
+  showNotif('✓ Pacient mutat în coșul de gunoi. Poate fi restaurat complet!');
 }
 
 async function openTreatmentModal(id){
@@ -2934,9 +2945,12 @@ function renderReceiptPatientList(q){
   }
   el.innerHTML=list.map(function(p){
     var isSelected=p.id===selectedReceiptPatientId;
-    return '<div onclick="selectReceiptPatient(\''+p.id+'\')" style="padding:10px 12px;border-radius:8px;border:1px solid '+(isSelected?'#0c3560':'#e2e8f0')+';background:'+(isSelected?'#eff6ff':'#fff')+';cursor:pointer;transition:all 0.1s;display:flex;flex-direction:column;gap:2px">'
+    return '<div style="display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:8px;border:1px solid '+(isSelected?'#0c3560':'#e2e8f0')+';background:'+(isSelected?'#eff6ff':'#fff')+';transition:all 0.1s">'
+      +'<div onclick="selectReceiptPatient(\''+p.id+'\')" style="flex:1;cursor:pointer;min-width:0">'
       +'<div style="font-weight:600;font-size:13px;color:#0c3560">'+esc(p.name)+'</div>'
       +(p.phone?'<div style="font-size:11px;color:#64748b">'+esc(p.phone)+'</div>':'')
+      +'</div>'
+      +'<button onclick="event.stopPropagation();deletePatient(\''+p.id+'\',\''+esc(p.name)+'\')" style="flex-shrink:0;width:26px;height:26px;border-radius:6px;border:1px solid #fca5a5;background:#fff;color:#dc2626;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center" title="\u0218terge pacient">\u2715</button>'
       +'</div>';
   }).join('');
 }
@@ -2959,15 +2973,15 @@ async function generateReceipt(){
   var lbl=document.getElementById('receipt-patient-name-label');
   var info=document.getElementById('receipt-info');
   if(!patId){
-    el.innerHTML='<div class="loading">Selectează un pacient pentru a vedea bonurile</div>';
-    if(lbl)lbl.textContent='Selectează un pacient';
-    if(info)info.classList.add('hidden');
+    if(el) el.innerHTML='<div class="loading">Selectează un pacient pentru a vedea bonurile</div>';
+    if(lbl) lbl.textContent='Selectează un pacient';
+    if(info) info.classList.add('hidden');
     return;
   }
   var pat=state.patients.find(function(p){return p.id===patId;});
-  if(lbl)lbl.textContent=pat?'Bonuri pentru: '+pat.name:'';
-  if(info)info.classList.remove('hidden');
-  el.innerHTML='<div class="loading">Se încarcă...</div>';
+  if(lbl) lbl.textContent=pat?'Bonuri pentru: '+pat.name:'';
+  if(info) info.classList.remove('hidden');
+  if(el) el.innerHTML='<div class="loading">Se încarcă...</div>';
 
   var{data:stages}=await sb.from('stages').select('*').eq('patient_id',patId).order('position');
   var allDoneItems=[];
@@ -3807,25 +3821,55 @@ async function restoreFromTrash(trashId, type){
   if(!item){showNotif('Element negăsit!',false);return;}
   var d=item.data;
   var error=null;
+
   if(type==='patient'){
-    var res=await sb.from('patients').insert([d]);
+    // Restore patient
+    var patData=Object.assign({},d);
+    delete patData._stages; // remove nested data before insert
+    var res=await sb.from('patients').insert([patData]);
     error=res.error;
-    if(!error){
-      var pat=Object.assign({},d);
-      state.patients.push(pat);
-      state.patients.sort(function(a,b){return (a.name||'').localeCompare(b.name||'','ro');});
-      renderPatients();updateStats();populatePatientSelect();
+    if(error){showNotif('Eroare restaurare pacient: '+error.message,false);return;}
+
+    // Restore stages and items if saved
+    if(d._stages&&d._stages.length){
+      for(var stage of d._stages){
+        var stageItems=stage._items||[];
+        var stageData=Object.assign({},stage);
+        delete stageData._items;
+        var sRes=await sb.from('stages').insert([stageData]);
+        if(!sRes.error&&stageItems.length){
+          for(var it of stageItems){
+            await sb.from('stage_items').insert([it]);
+          }
+        }
+      }
     }
+
+    var pat=Object.assign({},patData);
+    state.patients.push(pat);
+    state.patients.sort(function(a,b){return (a.name||'').localeCompare(b.name||'','ro');});
+    renderPatients();updateStats();populatePatientSelect();
+    showNotif('✓ Pacientul '+esc(d.name||'')+' a fost restaurat complet'+(d._stages&&d._stages.length?' cu '+d._stages.length+' etape!':'!'));
+
   } else if(type==='stage'){
-    var res=await sb.from('stages').insert([d]);
+    var stageItems=d._items||[];
+    var stageData=Object.assign({},d);
+    delete stageData._items;
+    var res=await sb.from('stages').insert([stageData]);
     error=res.error;
-    if(!error) showNotif('✓ Etapă restaurată! Deschide planul pacientului.');
+    if(!error&&stageItems.length){
+      for(var it of stageItems){
+        await sb.from('stage_items').insert([it]);
+      }
+      showNotif('✓ Etapă restaurată cu '+stageItems.length+' proceduri!');
+    } else if(!error){
+      showNotif('✓ Etapă restaurată!');
+    }
   } else if(type==='stage_item'){
     var res=await sb.from('stage_items').insert([d]);
     error=res.error;
-    if(!error) showNotif('✓ Procedură restaurată! Deschide planul pacientului.');
+    if(!error) showNotif('✓ Procedură restaurată!');
   } else if(type==='receipt'){
-    // Restore receipt_deleted=false on stage_items
     if(d.item_ids&&d.item_ids.length){
       for(var iid of d.item_ids){
         await sb.from('stage_items').update({receipt_deleted:false}).eq('id',iid);
@@ -3833,8 +3877,8 @@ async function restoreFromTrash(trashId, type){
     }
     showNotif('✓ Bon restaurat!');
   }
+
   if(error){showNotif('Eroare restaurare: '+error.message,false);return;}
-  if(type==='patient') showNotif('✓ Pacientul '+esc(d.name||'')+' a fost restaurat!');
   await sb.from('trash').delete().eq('id',trashId);
   renderTrash();
 }
