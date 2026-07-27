@@ -1768,7 +1768,15 @@ function renderPatients(){
     return '<div class="patient-card'+sel+'" onclick="selectPatient(\''+p.id+'\')">'
       +'<div style="display:flex;align-items:start;justify-content:space-between;gap:6px">'
       +'<div style="flex:1;min-width:0">'
-      +'<div style="font-weight:600;font-size:13px;color:#0c3560">'+esc(p.name)+'</div>'
+      +'<div style="display:flex;align-items:center;gap:4px" onclick="event.stopPropagation()">'
+      +'<input id="name-'+p.id+'" type="text" value="'+esc(p.name||'')+'" placeholder="Nume pacient..." '
+      +'onkeydown="if(event.key===\'Enter\')savePatientName(\''+p.id+'\')" '
+      +'onblur="savePatientName(\''+p.id+'\')" '
+      +'style="flex:1;font-weight:600;font-size:13px;color:#0c3560;border:1px solid transparent;border-radius:6px;padding:2px 6px;background:transparent;outline:none;min-width:0;cursor:text" '
+      +'onfocus="this.style.borderColor=\'#0c3560\';this.style.background=\'#fff\'" '
+      +'>'
+      +'<svg onclick="document.getElementById(\'name-'+p.id+'\').focus()" width="12" height="12" fill="none" stroke="#94a3b8" stroke-width="2" viewBox="0 0 24 24" style="flex-shrink:0;cursor:pointer"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>'
+      +'</div>'
       +'<div style="display:flex;align-items:center;gap:4px;margin-top:4px" onclick="event.stopPropagation()">'
       +'<input id="phone-'+p.id+'" type="tel" value="'+esc(p.phone||'')+'" placeholder="+373 ..." '
       +'onkeydown="if(event.key===\'Enter\')savePatientPhone(\''+p.id+'\')" '
@@ -1778,7 +1786,15 @@ function renderPatients(){
       +'>'
       +'<svg onclick="document.getElementById(\'phone-'+p.id+'\').focus()" width="12" height="12" fill="none" stroke="#94a3b8" stroke-width="2" viewBox="0 0 24 24" style="flex-shrink:0;cursor:pointer"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>'
       +'</div>'
-      +'<div style="font-size:12px;margin-top:8px"><strong>Diagnostic:</strong> '+esc(p.diagnosis||'—')+'</div>'
+      +'<div style="display:flex;align-items:center;gap:4px;margin-top:4px" onclick="event.stopPropagation()">'
+      +'<input id="diag-'+p.id+'" type="text" value="'+esc(p.diagnosis||'')+'" placeholder="Diagnostic..." '
+      +'onkeydown="if(event.key===\'Enter\')savePatientDiag(\''+p.id+'\')" '
+      +'onblur="savePatientDiag(\''+p.id+'\')" '
+      +'style="flex:1;font-size:12px;color:#64748b;border:1px solid transparent;border-radius:6px;padding:3px 6px;background:transparent;outline:none;min-width:0;cursor:text" '
+      +'onfocus="this.style.borderColor=\'#0c3560\';this.style.background=\'#fff\'" '
+      +'>'
+      +'<svg onclick="document.getElementById(\'diag-'+p.id+'\').focus()" width="12" height="12" fill="none" stroke="#94a3b8" stroke-width="2" viewBox="0 0 24 24" style="flex-shrink:0;cursor:pointer"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>'
+      +'</div>'
       +debtHtml
       +'</div>'
       +'<button class="btn btn-danger" onclick="event.stopPropagation();deletePatient(\''+p.id+'\',\''+esc(p.name)+'\')" style="padding:3px 8px;font-size:11px;flex-shrink:0;margin-top:0">✕</button>'
@@ -1793,6 +1809,34 @@ function renderPatients(){
         :'')
       +'</div>';
   }).join('');
+}
+
+async function savePatientName(patId){
+  var input=document.getElementById('name-'+patId);
+  if(!input) return;
+  var newName=input.value.trim();
+  var pat=state.patients.find(function(p){return p.id===patId;});
+  if(!pat||!newName||pat.name===newName){input.style.borderColor='transparent';input.style.background='transparent';return;}
+  input.style.borderColor='transparent';input.style.background='transparent';
+  var{error}=await sb.from('patients').update({name:newName}).eq('id',patId);
+  if(error){showNotif('Eroare: '+error.message,false);return;}
+  pat.name=newName;
+  state.patients.sort(function(a,b){return (a.name||'').localeCompare(b.name||'','ro');});
+  renderPatients();populatePatientSelect();renderPdfPatientSelect();updateStats();
+  showNotif('✓ Nume actualizat!');
+}
+
+async function savePatientDiag(patId){
+  var input=document.getElementById('diag-'+patId);
+  if(!input) return;
+  var newDiag=input.value.trim();
+  var pat=state.patients.find(function(p){return p.id===patId;});
+  if(!pat||pat.diagnosis===newDiag){input.style.borderColor='transparent';input.style.background='transparent';return;}
+  input.style.borderColor='transparent';input.style.background='transparent';
+  var{error}=await sb.from('patients').update({diagnosis:newDiag}).eq('id',patId);
+  if(error){showNotif('Eroare: '+error.message,false);return;}
+  pat.diagnosis=newDiag;
+  showNotif('✓ Diagnostic actualizat!');
 }
 
 async function savePatientPhone(patId){
