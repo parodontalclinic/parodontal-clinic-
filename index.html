@@ -3744,6 +3744,8 @@ function renderRemindersList(){
     if(status!=='active')
       actions+='<button class="btn" onclick="setReminderStatus(\''+r.id+'\',\'active\')" style="font-size:11px;padding:4px 10px">↩ Resetează</button>';
     actions+='<button class="btn" onclick="openReschedule(\''+r.id+'\')" style="font-size:11px;padding:4px 10px">🔄 Reprogramează</button>';
+    if(pat.phone)
+      actions+='<button onclick="openWaModal(\''+r.patient_id+'\')" style="font-size:11px;padding:4px 10px;border-radius:7px;border:1.5px solid #25d366;background:#f0fdf4;color:#16a34a;font-weight:600;cursor:pointer">💬 WhatsApp</button>';
     actions+='<button class="btn btn-danger" onclick="deleteReminder(\''+r.id+'\')" style="font-size:11px;padding:4px 10px">Șterge</button>';
     actions+='</div></div>';
 
