@@ -267,6 +267,7 @@ tr:last-child td{border-bottom:none}
 
       <button class="tab-btn" id="tab-btn-receipt" onclick="switchTab('receipt')">🧾 Bon de plată</button>
       <button class="tab-btn" id="tab-btn-calendar" onclick="switchTab('calendar')">📅 Calendar</button>
+      <button class="tab-btn" id="tab-btn-trash" onclick="switchTab('trash')" style="color:#dc2626">🗑️ Coș gunoi</button>
     </div>
 
     <!-- PACIENTI -->
@@ -771,6 +772,30 @@ tr:last-child td{border-bottom:none}
         <div id="cal-grid" style="flex:1;overflow:auto;border:1px solid #e2e8f0;border-radius:12px;background:#fff"></div>
       </div>
     </div>
+
+    <!-- TRASH TAB -->
+    <div id="tab-trash" class="tab-content">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+        <div>
+          <h2 style="font-size:18px;font-weight:700;color:#dc2626;margin-bottom:4px">🗑️ Coș de gunoi</h2>
+          <p style="font-size:13px;color:#64748b">Elementele șterse pot fi restaurate sau eliminate definitiv.</p>
+        </div>
+        <div style="display:flex;gap:8px">
+          <select id="trash-filter" onchange="renderTrash()" style="font-size:12px;padding:6px 10px;border-radius:8px;border:1px solid #e2e8f0">
+            <option value="">Toate tipurile</option>
+            <option value="patient">Pacienți</option>
+            <option value="stage">Etape</option>
+            <option value="stage_item">Proceduri</option>
+            <option value="receipt">Bonuri</option>
+          </select>
+          <button onclick="emptyTrash()" style="padding:6px 14px;border-radius:8px;border:none;background:#dc2626;color:#fff;font-size:12px;font-weight:600;cursor:pointer">🗑 Golește coșul</button>
+        </div>
+      </div>
+      <div id="trash-list" style="display:flex;flex-direction:column;gap:10px">
+        <div style="text-align:center;color:#94a3b8;padding:40px;font-size:14px">Se încarcă...</div>
+      </div>
+    </div>
+    <!-- END TRASH TAB -->
 
     <!-- APPOINTMENT MODAL -->
     <div id="appointment-modal" class="hidden" style="position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px" onclick="closeAppointmentModal()">
@@ -1784,7 +1809,10 @@ async function savePatientPhone(patId){
 }
 
 async function deletePatient(id, name){
-  if(!confirm('Ștergi pacientul "'+name+'"?\n\nAceastă acțiune va șterge și toate etapele, procedurile, documentele și reminderele asociate. Nu poate fi anulată!')) return;
+  if(!confirm('Muți pacientul "'+name+'" în coșul de gunoi?\n\nPoți să-l restaurezi oricând din tab-ul Coș gunoi.')) return;
+  // Save to trash first
+  var pat=state.patients.find(function(p){return p.id===id;})||{};
+  await moveToTrash('patient', pat, pat.name||'Pacient');
   var{error}=await sb.from('patients').delete().eq('id',id);
   if(error){showNotif('Eroare: '+error.message,false);return;}
   state.patients=state.patients.filter(function(p){return p.id!==id;});
@@ -1793,7 +1821,7 @@ async function deletePatient(id, name){
     state.stages=[];state.stageItems={};state.doneItems={};state.activeStageId=null;
   }
   populatePatientSelect();renderPdfPatientSelect();renderPatients();renderTreatment();updateStats();
-  showNotif('✓ Pacient șters.');
+  showNotif('✓ Pacient mutat în coșul de gunoi. Poate fi restaurat!');
 }
 
 async function openTreatmentModal(id){
@@ -2287,18 +2315,27 @@ async function updateItemPrice(itemId, newPrice){
 }
 
 async function removeItem(stageId,itemId){
+  var item=(state.stageItems[stageId]||[]).find(function(it){return it.id===itemId;})||{};
+  await moveToTrash('stage_item', item, item.name||'Procedură');
   await sb.from('stage_items').delete().eq('id',itemId);
   state.stageItems[stageId]=(state.stageItems[stageId]||[]).filter(function(it){return it.id!==itemId;});
-  renderTreatment();updateStats();showNotif('Procedură eliminată.');
+  renderTreatment();updateStats();showNotif('✓ Procedură mutată în coșul de gunoi. Poate fi restaurată!');
 }
 
 async function deleteStage(stageId){
-  if(!confirm('Ștergi această etapă și toate procedurile din ea?'))return;
+  if(!confirm('Muți această etapă în coșul de gunoi?\n\nPoți să o restaurezi oricând.'))return;
+  var stage=state.stages.find(function(s){return s.id===stageId;})||{};
+  var items=state.stageItems[stageId]||[];
+  // Save stage and its items to trash
+  await moveToTrash('stage', stage, stage.name||'Etapă');
+  for(var it of items){
+    await moveToTrash('stage_item', it, it.name||'Procedură');
+  }
   await sb.from('stages').delete().eq('id',stageId);
   state.stages=state.stages.filter(function(s){return s.id!==stageId;});
   delete state.stageItems[stageId];
   if(state.activeStageId===stageId)state.activeStageId=state.stages.length?state.stages[0].id:null;
-  renderTreatment();updateStats();showNotif('Etapă ștearsă.');
+  renderTreatment();updateStats();showNotif('✓ Etapă mutată în coșul de gunoi. Poate fi restaurată!');
 }
 
 async function addStage(){
@@ -2667,8 +2704,8 @@ function switchTab(tab){
   var sb2=document.getElementById('sbtn-'+tab);if(sb2)sb2.classList.add('active');
   if(tab==='procedures')renderProcedures();
   if(tab==='reminders'){populateReminderPatientSelect();loadReminders();}
+  if(tab==='trash') renderTrash();
   if(tab==='calendar'){
-    populateApptPatientSelect();
     loadCalendar().then(function(){
       if(gcal_accessToken) syncFromGoogle();
     });
@@ -3597,6 +3634,111 @@ async function onItemDrop(e,toStageId){
   showNotif('✓ Procedură mutată!');
 }
 // ---- END DRAG & DROP TREATMENT ITEMS ----
+
+// ---- TRASH / COS GUNOI ----
+async function moveToTrash(type, data, label){
+  var user=(supabaseUser&&supabaseUser.email)||'';
+  await sb.from('trash').insert([{type:type,data:data,label:label,deleted_by:user}]);
+}
+
+async function renderTrash(){
+  var filter=document.getElementById('trash-filter')?document.getElementById('trash-filter').value:'';
+  var q=sb.from('trash').select('*').order('deleted_at',{ascending:false});
+  if(filter) q=q.eq('type',filter);
+  var{data,error}=await q;
+  var el=document.getElementById('trash-list');
+  if(!el) return;
+  if(error||!data||!data.length){
+    el.innerHTML='<div style="text-align:center;color:#94a3b8;padding:40px;font-size:14px">Coșul de gunoi este gol.</div>';
+    return;
+  }
+  var typeLabels={patient:'👤 Pacient',stage:'📋 Etapă',stage_item:'🦷 Procedură',receipt:'🧾 Bon'};
+  var typeColors={patient:'#0c3560',stage:'#7c3aed',stage_item:'#0891b2',receipt:'#16a34a'};
+  el.innerHTML=data.map(function(item){
+    var d=item.data||{};
+    var typeLabel=typeLabels[item.type]||item.type;
+    var color=typeColors[item.type]||'#64748b';
+    var deletedAt=new Date(item.deleted_at).toLocaleString('ro-RO',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+    var details='';
+    if(item.type==='patient') details='<div style="font-size:12px;color:#64748b;margin-top:2px">'+(d.phone?'📞 '+esc(d.phone)+'  ':'')+(d.diagnosis?'Diagnostic: '+esc(d.diagnosis):'')+'</div>';
+    if(item.type==='stage') details='<div style="font-size:12px;color:#64748b;margin-top:2px">Pacient ID: '+esc(d.patient_id||'')+'  Discount: '+(d.discount||0)+'%</div>';
+    if(item.type==='stage_item') details='<div style="font-size:12px;color:#64748b;margin-top:2px">Preț: '+fmt(d.price||0)+(d.done?' · ✓ Efectuat':'')+'</div>';
+    if(item.type==='receipt') details='<div style="font-size:12px;color:#64748b;margin-top:2px">Total: '+fmt(d.total||0)+' MDL</div>';
+    return '<div style="background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:12px 16px;display:flex;align-items:center;gap:12px">'
+      +'<div style="width:8px;height:8px;border-radius:50%;background:'+color+';flex-shrink:0"></div>'
+      +'<div style="flex:1;min-width:0">'
+      +'<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'
+      +'<span style="font-size:11px;background:#f1f5f9;color:'+color+';padding:2px 8px;border-radius:10px;font-weight:600">'+typeLabel+'</span>'
+      +'<span style="font-size:14px;font-weight:600;color:#0c3560">'+esc(item.label||'—')+'</span>'
+      +'</div>'
+      +details
+      +'<div style="font-size:11px;color:#94a3b8;margin-top:4px">🗑️ Șters: '+deletedAt+(item.deleted_by?' de '+esc(item.deleted_by):'')+'</div>'
+      +'</div>'
+      +'<div style="display:flex;gap:6px;flex-shrink:0">'
+      +'<button onclick="restoreFromTrash(\''+item.id+'\',\''+item.type+'\')" style="padding:5px 12px;border-radius:7px;border:none;background:#0c3560;color:#fff;font-size:12px;font-weight:600;cursor:pointer">↩ Restaurează</button>'
+      +'<button onclick="deleteFromTrash(\''+item.id+'\')" style="padding:5px 10px;border-radius:7px;border:1px solid #fca5a5;background:#fff;color:#dc2626;font-size:12px;font-weight:600;cursor:pointer">✕</button>'
+      +'</div>'
+      +'</div>';
+  }).join('');
+}
+
+async function restoreFromTrash(trashId, type){
+  var{data:item}=await sb.from('trash').select('*').eq('id',trashId).single();
+  if(!item){showNotif('Element negăsit!',false);return;}
+  var d=item.data;
+  var error=null;
+  if(type==='patient'){
+    var res=await sb.from('patients').insert([d]);
+    error=res.error;
+    if(!error){
+      var pat=Object.assign({},d);
+      state.patients.push(pat);
+      state.patients.sort(function(a,b){return (a.name||'').localeCompare(b.name||'','ro');});
+      renderPatients();updateStats();populatePatientSelect();
+    }
+  } else if(type==='stage'){
+    var res=await sb.from('stages').insert([d]);
+    error=res.error;
+    if(!error) showNotif('✓ Etapă restaurată! Deschide planul pacientului.');
+  } else if(type==='stage_item'){
+    var res=await sb.from('stage_items').insert([d]);
+    error=res.error;
+    if(!error) showNotif('✓ Procedură restaurată! Deschide planul pacientului.');
+  } else if(type==='receipt'){
+    // Restore receipt_deleted=false on stage_items
+    if(d.item_ids&&d.item_ids.length){
+      for(var iid of d.item_ids){
+        await sb.from('stage_items').update({receipt_deleted:false}).eq('id',iid);
+      }
+    }
+    showNotif('✓ Bon restaurat!');
+  }
+  if(error){showNotif('Eroare restaurare: '+error.message,false);return;}
+  if(type==='patient') showNotif('✓ Pacientul '+esc(d.name||'')+' a fost restaurat!');
+  await sb.from('trash').delete().eq('id',trashId);
+  renderTrash();
+}
+
+async function deleteFromTrash(trashId){
+  if(!confirm('Ștergi definitiv acest element? Nu poate fi recuperat!')) return;
+  await sb.from('trash').delete().eq('id',trashId);
+  showNotif('Element șters definitiv.');
+  renderTrash();
+}
+
+async function emptyTrash(){
+  var filter=document.getElementById('trash-filter')?document.getElementById('trash-filter').value:'';
+  var msg=filter?'Ștergi definitiv toate elementele de tipul selectat?':'Ștergi definitiv TOT din coșul de gunoi?';
+  if(!confirm(msg+'\n\nAceastă acțiune nu poate fi anulată!')) return;
+  var q=sb.from('trash').delete();
+  if(filter) q=q.eq('type',filter);
+  else q=q.neq('id','00000000-0000-0000-0000-000000000000');
+  var{error}=await q;
+  if(error){showNotif('Eroare: '+error.message,false);return;}
+  showNotif('✓ Coș golit!');
+  renderTrash();
+}
+// ---- END TRASH ----
 
 // ---- GOOGLE CALENDAR SYNC ----
 var GCAL_CLIENT_ID='148817469137-2ouhi7d0es0rf0lultn60qkfvnbd1t4v.apps.googleusercontent.com';
