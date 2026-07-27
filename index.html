@@ -284,7 +284,14 @@ tr:last-child td{border-bottom:none}
           <label>Nume de familie</label><input id="p-lastname" placeholder="Ex: Popescu">
           <label>Prenume</label><input id="p-firstname" placeholder="Ex: Ion">
           <label>Telefon</label><input id="p-phone" placeholder="+373 ...">
-          <label>Data nașterii</label><input id="p-birthdate" type="date">
+          <label>Data nașterii</label>
+          <div style="display:flex;gap:6px;align-items:center">
+            <input id="p-bday-dd" type="text" maxlength="2" placeholder="ZZ" style="width:48px;text-align:center" oninput="this.value=this.value.replace(/[^0-9]/g,'');if(this.value.length==2)document.getElementById('p-bday-mm').focus()">
+            <span style="color:#94a3b8">/</span>
+            <input id="p-bday-mm" type="text" maxlength="2" placeholder="LL" style="width:48px;text-align:center" oninput="this.value=this.value.replace(/[^0-9]/g,'');if(this.value.length==2)document.getElementById('p-bday-yy').focus()">
+            <span style="color:#94a3b8">/</span>
+            <input id="p-bday-yy" type="text" maxlength="4" placeholder="AAAA" style="width:70px;text-align:center" oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+          </div>
           <label>Diagnostic</label><textarea id="p-diag" placeholder="Descriere diagnostic..."></textarea>
           <label>Observații</label><textarea id="p-notes" placeholder="Note suplimentare..."></textarea>
           <button class="btn btn-primary btn-full" onclick="addPatient()">+ Salvează pacient</button>
@@ -1849,13 +1856,27 @@ function renderPatients(){
       +'>'
       +'<svg onclick="document.getElementById(\'diag-'+p.id+'\').focus()" width="12" height="12" fill="none" stroke="#94a3b8" stroke-width="2" viewBox="0 0 24 24" style="flex-shrink:0;cursor:pointer"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>'
       +'</div>'
-      +'<div style="display:flex;align-items:center;gap:4px;margin-top:4px" onclick="event.stopPropagation()">'
-      +'<span style="font-size:11px;color:#94a3b8;white-space:nowrap">🎂</span>'
-      +'<input id="bday-'+p.id+'" type="date" value="'+esc(p.birthdate||'')+'" '
-      +'onchange="savePatientBirthdate(\''+p.id+'\')" '
-      +'style="flex:1;font-size:12px;color:#64748b;border:1px solid transparent;border-radius:6px;padding:3px 6px;background:transparent;outline:none;min-width:0;cursor:pointer" '
-      +'onfocus="this.style.borderColor=\'#0c3560\';this.style.background=\'#fff\'" '
-      +'onblur="this.style.borderColor=\'transparent\';this.style.background=\'transparent\'" '
+      +'<div style="display:flex;align-items:center;gap:3px;margin-top:4px" onclick="event.stopPropagation()">'
+      +'<span style="font-size:11px;color:#94a3b8">🎂</span>'
+      +'<input id="bday-dd-'+p.id+'" type="text" maxlength="2" value="'+(p.birthdate?p.birthdate.split('-')[2]||'':'')+' " placeholder="ZZ"'
+      +' onblur="saveBirthdateParts(\''+p.id+'\')" onkeydown="if(event.key===\'Enter\')saveBirthdateParts(\''+p.id+'\')"'
+      +' oninput="this.value=this.value.replace(/[^0-9]/g,\'\');if(this.value.length==2)document.getElementById(\'bday-mm-'+p.id+'\').focus()"'
+      +' style="width:30px;text-align:center;font-size:12px;color:#64748b;border:1px solid #e2e8f0;border-radius:4px;padding:2px 3px;outline:none"'
+      +' onfocus="this.style.borderColor=\'#0c3560\'" onblur2="this.style.borderColor=\'#e2e8f0\'"'
+      +'>'
+      +'<span style="font-size:11px;color:#cbd5e1">/</span>'
+      +'<input id="bday-mm-'+p.id+'" type="text" maxlength="2" value="'+(p.birthdate?p.birthdate.split('-')[1]||'':'')+' " placeholder="LL"'
+      +' onblur="saveBirthdateParts(\''+p.id+'\')" onkeydown="if(event.key===\'Enter\')saveBirthdateParts(\''+p.id+'\')"'
+      +' oninput="this.value=this.value.replace(/[^0-9]/g,\'\');if(this.value.length==2)document.getElementById(\'bday-yy-'+p.id+'\').focus()"'
+      +' style="width:30px;text-align:center;font-size:12px;color:#64748b;border:1px solid #e2e8f0;border-radius:4px;padding:2px 3px;outline:none"'
+      +' onfocus="this.style.borderColor=\'#0c3560\'"'
+      +'>'
+      +'<span style="font-size:11px;color:#cbd5e1">/</span>'
+      +'<input id="bday-yy-'+p.id+'" type="text" maxlength="4" value="'+(p.birthdate?p.birthdate.split('-')[0]||'':'')+' " placeholder="AAAA"'
+      +' onblur="saveBirthdateParts(\''+p.id+'\')" onkeydown="if(event.key===\'Enter\')saveBirthdateParts(\''+p.id+'\')"'
+      +' oninput="this.value=this.value.replace(/[^0-9]/g,\'\')"'
+      +' style="width:46px;text-align:center;font-size:12px;color:#64748b;border:1px solid #e2e8f0;border-radius:4px;padding:2px 3px;outline:none"'
+      +' onfocus="this.style.borderColor=\'#0c3560\'"'
       +'>'
       +'</div>'
       +debtHtml
@@ -1902,18 +1923,28 @@ async function savePatientDiag(patId){
   showNotif('✓ Diagnostic actualizat!');
 }
 
-async function savePatientBirthdate(patId){
-  var input=document.getElementById('bday-'+patId);
-  if(!input) return;
-  var newBday=input.value||null;
+async function saveBirthdateParts(patId){
+  var dd=(document.getElementById('bday-dd-'+patId)||{}).value||'';
+  var mm=(document.getElementById('bday-mm-'+patId)||{}).value||'';
+  var yy=(document.getElementById('bday-yy-'+patId)||{}).value||'';
+  dd=dd.trim();mm=mm.trim();yy=yy.trim();
+  if(!dd&&!mm&&!yy){var pat=state.patients.find(function(p){return p.id===patId;});if(pat&&pat.birthdate){await sb.from('patients').update({birthdate:null}).eq('id',patId);pat.birthdate=null;}return;}
+  if(dd.length<1||mm.length<1||yy.length<4) return;
+  var newBday=yy+'-'+mm.padStart(2,'0')+'-'+dd.padStart(2,'0');
+  var testDate=new Date(newBday);
+  if(isNaN(testDate.getTime())){showNotif('Dată invalidă!',false);return;}
   var pat=state.patients.find(function(p){return p.id===patId;});
-  if(!pat||(pat.birthdate||null)===(newBday)) return;
-  input.style.borderColor='transparent';input.style.background='transparent';
+  if(!pat||pat.birthdate===newBday) return;
   var{error}=await sb.from('patients').update({birthdate:newBday}).eq('id',patId);
   if(error){showNotif('Eroare: '+error.message,false);return;}
   pat.birthdate=newBday;
-  showNotif('✓ Data nașterii salvată!');
+  showNotif('\u2713 Data na\u0219terii salvat\u0103!');
 }
+
+async function savePatientBirthdate(patId){
+  await saveBirthdateParts(patId);
+}
+
 
 async function checkBirthdayReminders(){
   var today=new Date();
@@ -2017,12 +2048,19 @@ async function addPatient(){
   var firstname=document.getElementById('p-firstname').value.trim();
   var name=(lastname+' '+firstname).trim();
   if(!name){showNotif('Introduceți numele!',false);return;}
-  var obj={name,phone:document.getElementById('p-phone').value,diagnosis:document.getElementById('p-diag').value,notes:document.getElementById('p-notes').value,birthdate:document.getElementById('p-birthdate').value||null};
+  var bddd=(document.getElementById('p-bday-dd')||{}).value||'';
+  var bdmm=(document.getElementById('p-bday-mm')||{}).value||'';
+  var bdyy=(document.getElementById('p-bday-yy')||{}).value||'';
+  var birthdate=null;
+  if(bddd.trim()&&bdmm.trim()&&bdyy.trim()&&bdyy.trim().length===4){
+    birthdate=bdyy.trim()+'-'+bdmm.trim().padStart(2,'0')+'-'+bddd.trim().padStart(2,'0');
+  }
+  var obj={name,phone:document.getElementById('p-phone').value,diagnosis:document.getElementById('p-diag').value,notes:document.getElementById('p-notes').value,birthdate:birthdate};
   var{data,error}=await sb.from('patients').insert([obj]).select().single();
   if(error){showNotif('Eroare: '+error.message,false);return;}
   state.patients.push(data);
   state.patients.sort(function(a,b){return (a.name||'').localeCompare(b.name||'','ro');});
-  ['p-lastname','p-firstname','p-phone','p-birthdate','p-diag','p-notes'].forEach(function(id){document.getElementById(id).value='';});
+  ['p-lastname','p-firstname','p-phone','p-bday-dd','p-bday-mm','p-bday-yy','p-diag','p-notes'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});
   state.selectedPatientId=data.id;state.stages=[];state.stageItems={};state.activeStageId=null;
   populatePatientSelect();renderPdfPatientSelect();renderPatients();renderTreatment();updateStats();
   showNotif('✓ Pacient salvat!');
