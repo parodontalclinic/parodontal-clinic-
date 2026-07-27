@@ -2956,19 +2956,27 @@ function renderReceiptPatientList(q){
 }
 
 async function removePatientFromReceipts(patId, patName){
-  if(!confirm('Ștergi toate bonurile pentru "'+patName+'"?\n\nPacientul rămâne în sistem, doar bonurile vor fi eliminate din această listă.')) return;
-  // Mark all done stage_items as receipt_deleted
+  if(!confirm('Ștergi toate bonurile pentru "'+patName+'"?\n\nPacientul rămâne în sistem, bonurile vor putea fi restaurate din Coșul de gunoi.')) return;
   var{data:stages}=await sb.from('stages').select('id').eq('patient_id',patId);
   var count=0;
   for(var s of (stages||[])){
-    var{data:items}=await sb.from('stage_items').select('id').eq('stage_id',s.id).eq('done',true).eq('receipt_deleted',false);
+    var{data:items}=await sb.from('stage_items').select('*').eq('stage_id',s.id).eq('done',true).eq('receipt_deleted',false);
     if(items&&items.length){
       var ids=items.map(function(it){return it.id;});
+      // Save to trash as receipt type
+      var total=items.reduce(function(a,it){return a+(it.price||0);},0);
+      await moveToTrash('receipt',{
+        patient_id:patId,
+        patient_name:patName,
+        item_ids:ids,
+        items:items,
+        total:total
+      }, 'Bonuri: '+patName+' ('+items.length+' proceduri, '+fmt(total)+')');
+      // Mark as deleted
       await sb.from('stage_items').update({receipt_deleted:true}).in('id',ids);
       count+=ids.length;
     }
   }
-  // Remove from local list
   receiptPatientsWithBons=receiptPatientsWithBons.filter(function(p){return p.id!==patId;});
   if(selectedReceiptPatientId===patId){
     selectedReceiptPatientId=null;
@@ -2978,7 +2986,7 @@ async function removePatientFromReceipts(patId, patName){
     if(lbl) lbl.textContent='Selectează un pacient';
   }
   renderReceiptPatientList((document.getElementById('receipt-search')||{}).value||'');
-  showNotif('✓ '+count+' bonuri eliminate pentru '+patName+'. Pacientul rămâne în sistem.');
+  showNotif('✓ '+count+' bonuri mutate în Coșul de gunoi pentru '+patName+'.');
 }
 
 function selectReceiptPatient(patId){
@@ -3901,7 +3909,8 @@ async function restoreFromTrash(trashId, type){
         await sb.from('stage_items').update({receipt_deleted:false}).eq('id',iid);
       }
     }
-    showNotif('✓ Bon restaurat!');
+    if(typeof loadReceiptPatients==='function') loadReceiptPatients();
+    showNotif('✓ Bonuri restaurate pentru '+(d.patient_name||'pacient')+'!');
   }
 
   if(error){showNotif('Eroare restaurare: '+error.message,false);return;}
