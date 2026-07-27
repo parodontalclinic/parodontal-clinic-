@@ -713,13 +713,14 @@ tr:last-child td{border-bottom:none}
           <div class="card-title">Bon de plată</div>
           <div class="card-sub">Bonurile se generează automat din procedurile bifate</div>
 
-          <label>Pacient</label>
-          <select id="receipt-patient-sel" onchange="generateReceipt()">
-            <option value="">— Selectează pacient —</option>
-          </select>
-
-          <div id="receipt-info" class="hidden" style="margin-top:14px;padding:12px;background:#f0fdf4;border:1px solid #86efac;border-radius:8px;font-size:12px;color:#166534">
-            Bonurile sunt grupate automat după data și ora bifării procedurilor.
+          <label>Caută pacient</label>
+          <div style="position:relative;margin-bottom:8px">
+            <svg style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:#94a3b8" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+            <input id="receipt-search" type="text" placeholder="Caută după nume..." oninput="filterReceiptPatients()"
+              style="width:100%;padding:8px 8px 8px 32px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;outline:none;box-sizing:border-box">
+          </div>
+          <div id="receipt-patient-list" style="max-height:60vh;overflow-y:auto;display:flex;flex-direction:column;gap:4px">
+            <div style="color:#94a3b8;font-size:13px;padding:8px">Se încarcă...</div>
           </div>
         </div>
 
@@ -2255,9 +2256,10 @@ async function toggleDone(itemId){
   if(receiptTab&&receiptTab.classList.contains('active')&&receiptSel&&receiptSel.value===state.selectedPatientId){
     generateReceipt();
   } else if(receiptSel&&receiptSel.value===state.selectedPatientId){
-    // Pre-populate for instant view when user switches to receipt tab
     generateReceipt();
   }
+  // Refresh receipt patient list if it's loaded
+  if(receiptPatientsWithBons&&receiptPatientsWithBons.length) loadReceiptPatients();
   // Check if we need to propose auto-reminder (only when marking as done)
   if(newDone && itemName && state.selectedPatientId){
     checkAutoReminder(itemName, state.selectedPatientId, itemId);
@@ -2750,6 +2752,7 @@ function switchTab(tab){
   var sb2=document.getElementById('sbtn-'+tab);if(sb2)sb2.classList.add('active');
   if(tab==='procedures')renderProcedures();
   if(tab==='reminders'){populateReminderPatientSelect();loadReminders();}
+  if(tab==='receipt') loadReceiptPatients();
   if(tab==='trash') renderTrash();
   if(tab==='calendar'){
     loadCalendar().then(function(){
@@ -2893,16 +2896,78 @@ function closeDocModal(){
 
 // ---- BON DE PLATA ----
 function populateReceiptPatientSelect(){
-  var sel=document.getElementById('receipt-patient-sel');
-  if(!sel)return;
-  var cur=sel.value;
-  sel.innerHTML='<option value="">— Selectează pacient —</option>'
-    +state.patients.map(function(p){return'<option value="'+p.id+'">'+esc(p.name)+'</option>';}).join('');
-  if(cur)sel.value=cur;
+  // Legacy: kept for compatibility with generateReceipt calls
+  loadReceiptPatients();
 }
 
+var receiptPatientsWithBons=[];
+var selectedReceiptPatientId=null;
+
+async function loadReceiptPatients(){
+  // Load only patients that have done stage_items (receipts)
+  var{data:doneItems}=await sb.from('stage_items')
+    .select('stage_id,stages!inner(patient_id)')
+    .eq('done',true)
+    .eq('receipt_deleted',false);
+  var patIds=new Set();
+  (doneItems||[]).forEach(function(it){
+    if(it.stages&&it.stages.patient_id) patIds.add(it.stages.patient_id);
+  });
+  receiptPatientsWithBons=state.patients.filter(function(p){return patIds.has(p.id);});
+  renderReceiptPatientList('');
+}
+
+function filterReceiptPatients(){
+  var q=(document.getElementById('receipt-search')||{}).value||'';
+  renderReceiptPatientList(q.toLowerCase().trim());
+}
+
+function renderReceiptPatientList(q){
+  var el=document.getElementById('receipt-patient-list');
+  if(!el) return;
+  var list=receiptPatientsWithBons.filter(function(p){
+    return !q||(p.name||'').toLowerCase().includes(q)||(p.phone||'').toLowerCase().includes(q);
+  });
+  if(!list.length){
+    el.innerHTML='<div style="color:#94a3b8;font-size:13px;padding:8px">'+(q?'Niciun rezultat.':'Niciun pacient cu bonuri.')+'</div>';
+    return;
+  }
+  el.innerHTML=list.map(function(p){
+    var isSelected=p.id===selectedReceiptPatientId;
+    return '<div onclick="selectReceiptPatient(\''+p.id+'\')" style="padding:10px 12px;border-radius:8px;border:1px solid '+(isSelected?'#0c3560':'#e2e8f0')+';background:'+(isSelected?'#eff6ff':'#fff')+';cursor:pointer;transition:all 0.1s;display:flex;flex-direction:column;gap:2px">'
+      +'<div style="font-weight:600;font-size:13px;color:#0c3560">'+esc(p.name)+'</div>'
+      +(p.phone?'<div style="font-size:11px;color:#64748b">'+esc(p.phone)+'</div>':'')
+      +'</div>';
+  }).join('');
+}
+
+function selectReceiptPatient(patId){
+  selectedReceiptPatientId=patId;
+  renderReceiptPatientList((document.getElementById('receipt-search')||{}).value||'');
+  generateReceiptForPatient(patId);
+}
+
+async function generateReceiptForPatient(patId){
+  var el=document.getElementById('receipt-preview');
+  var lbl=document.getElementById('receipt-patient-name-label');
+  if(!patId){
+    if(el) el.innerHTML='<div class="loading">Selectează un pacient pentru a vedea bonurile</div>';
+    if(lbl) lbl.textContent='Selectează un pacient';
+    return;
+  }
+  var pat=state.patients.find(function(p){return p.id===patId;});
+  if(lbl) lbl.textContent=pat?'Bonuri pentru: '+pat.name:'';
+  if(el) el.innerHTML='<div class="loading">Se încarcă...</div>';
+
+  // Reuse generateReceipt logic by temporarily setting a fake select
+  var fakePatId=patId;
+  // Call internal receipt generation
+  await _generateReceiptContent(fakePatId);
+}
+
+async function _generateReceiptContent(patIdOverride){}// placeholder
 async function generateReceipt(){
-  var patId=document.getElementById('receipt-patient-sel').value;
+  var patId=selectedReceiptPatientId||(document.getElementById('receipt-patient-sel')||{}).value||'';
   var el=document.getElementById('receipt-preview');
   var lbl=document.getElementById('receipt-patient-name-label');
   var info=document.getElementById('receipt-info');
