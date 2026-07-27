@@ -380,9 +380,17 @@ tr:last-child td{border-bottom:none}
               </div>
             </div>
 
-            <button class="btn btn-primary btn-full" onclick="addToCart()" style="margin-top:14px">
-              + Adaugă în coș
-            </button>
+            <div style="display:flex;align-items:center;gap:8px;margin-top:14px">
+              <div style="display:flex;align-items:center;gap:6px;background:#f1f5f9;border-radius:8px;padding:4px 8px">
+                <span style="font-size:12px;color:#64748b;white-space:nowrap">Cantitate:</span>
+                <button onclick="changeQty(-1)" style="width:24px;height:24px;border-radius:5px;border:1px solid #e2e8f0;background:#fff;font-size:16px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#0c3560">−</button>
+                <span id="proc-qty" style="font-size:15px;font-weight:700;color:#0c3560;min-width:24px;text-align:center">1</span>
+                <button onclick="changeQty(1)" style="width:24px;height:24px;border-radius:5px;border:1px solid #e2e8f0;background:#fff;font-size:16px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#0c3560">+</button>
+              </div>
+              <button class="btn btn-primary btn-full" onclick="addToCart()" style="flex:1">
+                + Adaugă în coș
+              </button>
+            </div>
           </div>
 
           <!-- COS -->
@@ -1425,6 +1433,14 @@ function updateTeethCount(){
 }
 
 // ---- CART ----
+var procQty=1;
+
+function changeQty(delta){
+  procQty=Math.max(1,Math.min(20,procQty+delta));
+  var el=document.getElementById('proc-qty');
+  if(el) el.textContent=procQty;
+}
+
 function addToCart(){
   var procId=document.getElementById('sel-procedure').value;
   var proc=state.procedures.find(function(p){return p.id===procId;});
@@ -1432,13 +1448,31 @@ function addToCart(){
   var teeth=selectedTeeth.slice();
   var patType=(document.getElementById('sel-patient-type')||{}).value||'adult';
   var arch=(document.getElementById('sel-arch')||{}).value||'';
-  cart.push({id:Date.now(),proc:proc,teeth:teeth,patType:patType,arch:arch});
+  var qty=procQty||1;
+
+  if(teeth.length>0){
+    // If teeth selected, add one per tooth (ignore qty)
+    teeth.forEach(function(tooth,i){
+      cart.push({id:Date.now()+i,proc:proc,teeth:[tooth],patType:patType,arch:arch});
+    });
+  } else {
+    // No teeth — add qty times
+    for(var i=0;i<qty;i++){
+      cart.push({id:Date.now()+i,proc:proc,teeth:[],patType:patType,arch:arch});
+    }
+  }
+
+  // Reset quantity
+  procQty=1;
+  var qtyEl=document.getElementById('proc-qty');
+  if(qtyEl) qtyEl.textContent='1';
+
   clearTeeth();
   document.getElementById('sel-category').value='';
   document.getElementById('sel-procedure').innerHTML='<option value="">— Alege mai întâi categoria —</option>';
   document.getElementById('price-tag').classList.add('hidden');
   renderCart();
-  showNotif('✓ '+proc.name+' adăugat în coș!');
+  showNotif('✓ '+proc.name+(qty>1?' (×'+qty+')':'')+' adăugat în coș!');
 }
 
 function removeFromCart(id){
