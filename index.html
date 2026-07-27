@@ -2948,21 +2948,8 @@ function selectReceiptPatient(patId){
 }
 
 async function generateReceiptForPatient(patId){
-  var el=document.getElementById('receipt-preview');
-  var lbl=document.getElementById('receipt-patient-name-label');
-  if(!patId){
-    if(el) el.innerHTML='<div class="loading">Selectează un pacient pentru a vedea bonurile</div>';
-    if(lbl) lbl.textContent='Selectează un pacient';
-    return;
-  }
-  var pat=state.patients.find(function(p){return p.id===patId;});
-  if(lbl) lbl.textContent=pat?'Bonuri pentru: '+pat.name:'';
-  if(el) el.innerHTML='<div class="loading">Se încarcă...</div>';
-
-  // Reuse generateReceipt logic by temporarily setting a fake select
-  var fakePatId=patId;
-  // Call internal receipt generation
-  await _generateReceiptContent(fakePatId);
+  selectedReceiptPatientId=patId;
+  await generateReceipt();
 }
 
 async function _generateReceiptContent(patIdOverride){}// placeholder
