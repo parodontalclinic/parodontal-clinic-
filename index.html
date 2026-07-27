@@ -3637,8 +3637,17 @@ async function onItemDrop(e,toStageId){
 
 // ---- TRASH / COS GUNOI ----
 async function moveToTrash(type, data, label){
-  var user=(supabaseUser&&supabaseUser.email)||'';
-  await sb.from('trash').insert([{type:type,data:data,label:label,deleted_by:user}]);
+  try{
+    var user=(state.currentUser&&state.currentUser.email)||'';
+    // Clean data - remove circular refs and functions
+    var cleanData=JSON.parse(JSON.stringify(data||{}));
+    var{error}=await sb.from('trash').insert([{type:type,data:cleanData,label:label||'',deleted_by:user}]);
+    if(error) console.error('moveToTrash error:',error.message);
+    return !error;
+  }catch(e){
+    console.error('moveToTrash exception:',e);
+    return false;
+  }
 }
 
 async function renderTrash(){
