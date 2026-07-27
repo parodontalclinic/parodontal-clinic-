@@ -2950,9 +2950,35 @@ function renderReceiptPatientList(q){
       +'<div style="font-weight:600;font-size:13px;color:#0c3560">'+esc(p.name)+'</div>'
       +(p.phone?'<div style="font-size:11px;color:#64748b">'+esc(p.phone)+'</div>':'')
       +'</div>'
-      +'<button onclick="event.stopPropagation();deletePatient(\''+p.id+'\',\''+esc(p.name)+'\')" style="flex-shrink:0;width:26px;height:26px;border-radius:6px;border:1px solid #fca5a5;background:#fff;color:#dc2626;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center" title="\u0218terge pacient">\u2715</button>'
+      +'<button onclick="event.stopPropagation();removePatientFromReceipts(\''+p.id+'\',\''+esc(p.name)+'\')" style="flex-shrink:0;width:26px;height:26px;border-radius:6px;border:1px solid #fca5a5;background:#fff;color:#dc2626;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center" title="\u0218terge bonuri">\u2715</button>'
       +'</div>';
   }).join('');
+}
+
+async function removePatientFromReceipts(patId, patName){
+  if(!confirm('Ștergi toate bonurile pentru "'+patName+'"?\n\nPacientul rămâne în sistem, doar bonurile vor fi eliminate din această listă.')) return;
+  // Mark all done stage_items as receipt_deleted
+  var{data:stages}=await sb.from('stages').select('id').eq('patient_id',patId);
+  var count=0;
+  for(var s of (stages||[])){
+    var{data:items}=await sb.from('stage_items').select('id').eq('stage_id',s.id).eq('done',true).eq('receipt_deleted',false);
+    if(items&&items.length){
+      var ids=items.map(function(it){return it.id;});
+      await sb.from('stage_items').update({receipt_deleted:true}).in('id',ids);
+      count+=ids.length;
+    }
+  }
+  // Remove from local list
+  receiptPatientsWithBons=receiptPatientsWithBons.filter(function(p){return p.id!==patId;});
+  if(selectedReceiptPatientId===patId){
+    selectedReceiptPatientId=null;
+    var el=document.getElementById('receipt-preview');
+    if(el) el.innerHTML='<div class="loading">Selectează un pacient pentru a vedea bonurile</div>';
+    var lbl=document.getElementById('receipt-patient-name-label');
+    if(lbl) lbl.textContent='Selectează un pacient';
+  }
+  renderReceiptPatientList((document.getElementById('receipt-search')||{}).value||'');
+  showNotif('✓ '+count+' bonuri eliminate pentru '+patName+'. Pacientul rămâne în sistem.');
 }
 
 function selectReceiptPatient(patId){
