@@ -2914,7 +2914,15 @@ async function generateReceipt(){
       +'</div>'
       +'<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">'
       +statusBadge
-      +'<button class="btn btn-primary" onclick="printReceiptSession(\''+patId+'\',\''+key+'\','+curBon+')" style="font-size:11px;padding:4px 10px">🖨 Print</button>'
+      +'<div style="display:flex;gap:4px;align-items:center">'
+      +'<select id="bon-lang-'+curBon+'" style="font-size:11px;padding:3px 6px;border-radius:6px;border:1px solid #e2e8f0;color:#0c3560;cursor:pointer">'
+      +'<option value="ro">🇷🇴 RO</option>'
+      +'<option value="ru">🇷🇺 RU</option>'
+      +'<option value="en">🇬🇧 EN</option>'
+      +'<option value="it">🇮🇹 IT</option>'
+      +'</select>'
+      +'<button class="btn btn-primary" onclick="var l=document.getElementById(\'bon-lang-'+curBon+'\').value;printReceiptSession(\''+patId+'\',\''+key+'\','+curBon+',l)" style="font-size:11px;padding:4px 10px">🖨 Print</button>'
+      +'</div>'
       +'<button class="btn btn-danger" onclick="deleteReceiptSession(\''+patId+'\',\''+key+'\')" style="font-size:11px;padding:4px 8px">✕</button>'
       +'</div>'
       +'</div>'
@@ -2992,8 +3000,18 @@ async function deleteReceiptSession(patId, sessionKey){
   await generateReceipt();
 }
 
-async function printReceiptSession(patId, sessionKey, bonNr){
+async function printReceiptSession(patId, sessionKey, bonNr, lang){
+  lang=lang||'ro';
   var pat=state.patients.find(function(p){return p.id===patId;})||{};
+
+  // Receipt translations
+  var RT={
+    ro:{title:'Bon de plată',patient:'Pacient',phone:'Telefon',bon:'Bon',date:'Data',doctor:'Medic',total:'Total',discount:'cu reducere',copy1:'Exemplar pentru pacient',copy2:'Exemplar pentru clinică'},
+    ru:{title:'Квитанция об оплате',patient:'Пациент',phone:'Телефон',bon:'Квитанция',date:'Дата',doctor:'Врач',total:'Итого',discount:'со скидкой',copy1:'Экземпляр для пациента',copy2:'Экземпляр для клиники'},
+    en:{title:'Payment Receipt',patient:'Patient',phone:'Phone',bon:'Receipt',date:'Date',doctor:'Doctor',total:'Total',discount:'discounted',copy1:'Patient copy',copy2:'Clinic copy'},
+    it:{title:'Ricevuta di pagamento',patient:'Paziente',phone:'Telefono',bon:'Ricevuta',date:'Data',doctor:'Medico',total:'Totale',discount:'scontato',copy1:'Copia per il paziente',copy2:'Copia per la clinica'}
+  };
+  var T=RT[lang]||RT['ro'];
 
   function sessKey(dt){
     if(!dt) return 'unknown';
@@ -3016,7 +3034,8 @@ async function printReceiptSession(patId, sessionKey, bonNr){
   var sessItems=allItems.filter(function(it){return sessKey(it.done_at)===sessionKey;});
   if(!sessItems.length){showNotif('Nu s-au găsit proceduri pentru acest bon!',false);return;}
 
-  var dateStr=new Date(sessItems[0].done_at).toLocaleString('ro-RO',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+  var dateLocale={ro:'ro-RO',ru:'ru-RU',en:'en-GB',it:'it-IT'};
+  var dateStr=new Date(sessItems[0].done_at).toLocaleString(dateLocale[lang]||'ro-RO',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
 
   var rowsHtml=sessItems.map(function(it){
     var disc=it._stageDiscount||0;
@@ -3025,9 +3044,11 @@ async function printReceiptSession(patId, sessionKey, bonNr){
       ?'<span style="text-decoration:line-through;color:#94a3b8;font-size:11px;margin-right:4px">'+fmt(it.price||0)+'</span>'
        +'<strong style="color:#16a34a">'+fmt(priceDisc)+'</strong>'
       :'<strong>'+fmt(it.price||0)+'</strong>';
+    var translatedName=getTranslatedName(it.name,lang);
+    var doneByLabel={ro:'Dr.',ru:'Dr.',en:'Dr.',it:'Dr.'};
     var doneBy=it.done_by?'<span style="font-size:10px;color:#0c3560;background:#e0f2fe;padding:1px 5px;border-radius:4px;margin-left:4px">'+esc(it.done_by)+'</span>':'';
     return '<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid #f1f5f9;font-size:12px">'
-      +'<span style="flex:1">'+esc(it.name)+doneBy+'</span>'
+      +'<span style="flex:1">'+esc(translatedName)+doneBy+'</span>'
       +'<span style="white-space:nowrap">'+priceHtml+'</span>'
       +'</div>';
   }).join('');
@@ -3039,13 +3060,17 @@ async function printReceiptSession(patId, sessionKey, bonNr){
   var totalBrut=sessItems.reduce(function(a,it){return a+(it.price||0);},0);
   var hasDisc=total!==totalBrut;
 
+  var totalLabel={ro:'Total',ru:'Итого',en:'Total',it:'Totale'};
+  var totalDiscLabel={ro:'Total cu reducere',ru:'Итого со скидкой',en:'Total (discounted)',it:'Totale (scontato)'};
   var totalHtml=hasDisc
     ?'<div style="text-align:right">'
       +'<div style="font-size:12px;color:#94a3b8;text-decoration:line-through">'+fmt(totalBrut)+'</div>'
-      +'<div style="font-size:16px;font-weight:700;color:#16a34a">Total cu reducere: '+fmt(total)+'</div>'
+      +'<div style="font-size:16px;font-weight:700;color:#16a34a">'+(totalDiscLabel[lang]||totalDiscLabel.ro)+': '+fmt(total)+'</div>'
       +'</div>'
-    :'<div style="font-size:16px;font-weight:700;color:#0c3560">Total: '+fmt(total)+'</div>';
+    :'<div style="font-size:16px;font-weight:700;color:#0c3560">'+(totalLabel[lang]||totalLabel.ro)+': '+fmt(total)+'</div>';
 
+  var sigDoctor={ro:'Semn\u0103tura medicului',ru:'\u041f\u043e\u0434\u043f\u0438\u0441\u044c \u0432\u0440\u0430\u0447\u0430',en:'Doctor signature',it:'Firma del medico'};
+  var sigPatient={ro:'Semn\u0103tura pacientului',ru:'\u041f\u043e\u0434\u043f\u0438\u0441\u044c \u043f\u0430\u0446\u0438\u0435\u043d\u0442\u0430',en:'Patient signature',it:'Firma del paziente'};
   function buildCopy(copyLabel){
     return '<div class="bon-copy">'
       +'<div style="text-align:center;margin-bottom:12px;padding-bottom:10px;border-bottom:2px solid #0c3560">'
@@ -3053,9 +3078,9 @@ async function printReceiptSession(patId, sessionKey, bonNr){
       +'<div style="font-size:11px;color:#64748b">+373 78 766 688 \xb7 Chi\u0219in\u0103u, str. Nicolai Zelinski 15/3</div>'
       +'</div>'
       +'<div style="margin-bottom:10px;font-size:13px">'
-      +'<div><strong>Pacient:</strong> '+esc(pat.name||'\u2014')+'</div>'
-      +(pat.phone?'<div><strong>Telefon:</strong> '+esc(pat.phone)+'</div>':'')
-      +'<div><strong>Bon #'+bonNr+'</strong> \xb7 \ud83d\udcc5 '+dateStr+'</div>'
+      +'<div><strong>'+T.patient+':</strong> '+esc(pat.name||'\u2014')+'</div>'
+      +(pat.phone?'<div><strong>'+T.phone+':</strong> '+esc(pat.phone)+'</div>':'')
+      +'<div><strong>'+T.bon+' #'+bonNr+'</strong> \xb7 \ud83d\udcc5 '+dateStr+'</div>'
       +'<div style="font-size:11px;color:#64748b;font-style:italic">'+copyLabel+'</div>'
       +'</div>'
       +rowsHtml
@@ -3063,20 +3088,20 @@ async function printReceiptSession(patId, sessionKey, bonNr){
       +totalHtml
       +'</div>'
       +'<div style="margin-top:20px;display:grid;grid-template-columns:1fr 1fr;gap:20px;font-size:11px;color:#64748b">'
-      +'<div style="border-top:1px solid #ccc;padding-top:6px">Semn\u0103tura medicului</div>'
-      +'<div style="border-top:1px solid #ccc;padding-top:6px">Semn\u0103tura pacientului</div>'
+      +'<div style="border-top:1px solid #ccc;padding-top:6px">'+(sigDoctor[lang]||sigDoctor.ro)+'</div>'
+      +'<div style="border-top:1px solid #ccc;padding-top:6px">'+(sigPatient[lang]||sigPatient.ro)+'</div>'
       +'</div>'
       +'</div>';
   }
 
   var w=window.open('','_blank');
-  w.document.write('<!DOCTYPE html><html><head><title>Bon #'+bonNr+' - '+esc(pat.name||'')+'</title>');
-  w.document.write('<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;font-size:13px;padding:16px;max-width:480px;margin:0 auto}.bon-copy{padding:16px 0}.separator{border:none;border-top:2px dashed #cbd5e1;margin:16px 0}@media print{body{padding:8px}.bon-copy{break-inside:avoid}.page-break{page-break-before:always}}</style>');
+  w.document.write('<!DOCTYPE html><html lang="'+lang+'"><head><meta charset="UTF-8"><title>'+T.bon+' #'+bonNr+' - '+esc(pat.name||'')+'</title>');
+  w.document.write('<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,Helvetica,sans-serif;font-size:13px;padding:16px;max-width:480px;margin:0 auto}.bon-copy{padding:16px 0}.separator{border:none;border-top:2px dashed #cbd5e1;margin:16px 0}@media print{body{padding:8px}.bon-copy{break-inside:avoid}.page-break{page-break-before:always}}</style>');
   w.document.write('</head><body>');
-  w.document.write(buildCopy('Exemplar pentru pacient'));
+  w.document.write(buildCopy(T.copy1));
   w.document.write('<div class="separator"></div>');
   w.document.write('<div style="text-align:center;font-size:10px;color:#94a3b8;margin:-10px 0 8px;font-style:italic">\u2702 \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 \u2702</div>');
-  w.document.write(buildCopy('Exemplar pentru clinic\u0103'));
+  w.document.write(buildCopy(T.copy2));
   w.document.write('</body></html>');
   w.document.close();w.focus();setTimeout(function(){w.print();},600);
 }
