@@ -3307,9 +3307,8 @@ async function generateReceipt(){
 }
 
 async function setSessionPayment(sessionKey, status, amount){
-  // Find all items in this session
   var el=document.getElementById('receipt-preview');
-  var patId=document.getElementById('receipt-patient-sel').value;
+  var patId=selectedReceiptPatientId||(document.getElementById('receipt-patient-sel')||{}).value||'';
   // Get items for this session from current rendered data
   var{data:stages}=await sb.from('stages').select('*').eq('patient_id',patId).order('position');
   var allItems=[];
