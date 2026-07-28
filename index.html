@@ -3263,8 +3263,8 @@ async function generateReceipt(){
       +'</div>'
       +(sessStatus==='partial'
         ?'<div style="display:flex;align-items:center;gap:8px">'
-          +'<input type="text" inputmode="numeric" id="partial-input-'+bIdx+'" placeholder="Suma achitată (MDL)..." style="flex:1;border:1px solid #e2e8f0;border-radius:6px;padding:5px 8px;font-size:12px;outline:none">'
-          +'<button onclick="savePartialPayment(\''+key+'\','+total+','+bIdx+')" style="font-size:11px;padding:5px 12px;border-radius:6px;border:1px solid #0c3560;background:#0c3560;color:#fff;cursor:pointer;font-weight:600">Salvează</button>'
+          +'<input type="text" inputmode="numeric" id="partial-input-'+displayIdx+'" placeholder="Suma achitată (MDL)..." style="flex:1;border:1px solid #e2e8f0;border-radius:6px;padding:5px 8px;font-size:12px;outline:none">'
+          +'<button onclick="savePartialPayment(\''+key+'\','+total+','+displayIdx+')" style="font-size:11px;padding:5px 12px;border-radius:6px;border:1px solid #0c3560;background:#0c3560;color:#fff;cursor:pointer;font-weight:600">Salvează</button>'
           +'</div>'
         :'')
       +'</div>';
