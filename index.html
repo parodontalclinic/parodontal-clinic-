@@ -2601,6 +2601,11 @@ function getTranslatedName(name, lang){
 }
 
 function renderPdfPreviewWithLang(lang){
+  // Ensure rates are loaded before generating
+  if(!state_rates.EUR&&!state_rates.USD){
+    fetchMAIBRates().then(function(){renderPdfPreviewWithLang(lang);});
+    return;
+  }
   var patId=state.pdfPatientId||state.selectedPatientId;
   var pat=getPat(patId);
   var t=labels[lang]||labels['ro'];
@@ -2678,6 +2683,11 @@ function renderPdfPreviewWithLang(lang){
 }
 
 function renderPdfPreviewPatient(lang){
+  // Ensure rates are loaded
+  if(!state_rates.EUR&&!state_rates.USD){
+    fetchMAIBRates().then(function(){renderPdfPreviewPatient(lang);});
+    return;
+  }
   var patId=state.pdfPatientId||state.selectedPatientId;
   var pat=getPat(patId);
   var t=labels[lang]||labels['ro'];
@@ -2816,12 +2826,11 @@ function renderPdfPreviewPatient(lang){
       +'</div>';
   }).join('');
 
-  var grandTotalHtml='<div style="margin-top:16px;padding:12px 16px;background:#0c3560;border-radius:8px;display:flex;justify-content:space-between;align-items:center">'
-    +'<span style="color:#fff;font-weight:700;font-size:15px">'+t.grandTotal+'</span>'
-    +(hasAnyDisc
-      ?'<span style="color:#fff"><span style="text-decoration:line-through;opacity:0.6;margin-right:10px">'+fmtCurrency(gt)+'</span><span style="font-size:18px;font-weight:700">'+fmtCurrency(gtWithDisc)+'</span></span>'
-      :'<span style="color:#fff;font-size:18px;font-weight:700">'+fmtCurrency(gt)+'</span>')
-    +'</div>';
+  var patGtMDL=hasAnyDisc?gtWithDisc:gt;
+  var patEur=state_rates.EUR?'\u2248 '+(patGtMDL/state_rates.EUR).toFixed(0)+' \u20ac':'';
+  var patUsd=state_rates.USD?'\u2248 '+(patGtMDL/state_rates.USD).toFixed(0)+' $':'';
+  var patCurrLine=(patEur||patUsd)?'<div style="font-size:12px;color:#000;font-weight:700;margin-top:6px;text-align:right">'+(patEur?'<span style="margin-right:12px">'+patEur+'</span>':'')+patUsd+'</div>':'';
+  var grandTotalHtml='<div style="margin-top:16px;padding:12px 16px;background:#fff;border:2px solid #000;border-radius:4px">'    +'<div style="display:flex;justify-content:space-between;align-items:center">'    +'<span style="font-weight:700;font-size:15px;color:#000">'+t.grandTotal+'</span>'    +(hasAnyDisc      ?'<span style="color:#000"><span style="text-decoration:line-through;opacity:0.5;margin-right:10px">'+fmtCurrency(gt)+'</span><span style="font-size:18px;font-weight:700">'+fmtCurrency(gtWithDisc)+'</span></span>'      :'<span style="color:#000;font-size:18px;font-weight:700">'+fmtCurrency(gt)+'</span>')    +'</div>'    +patCurrLine    +'</div>';
 
   var html='<div style="font-family:serif;padding:20px;background:#fff;border:1px solid #e2e8f0;border-radius:12px">'
     +'<div style="text-align:center;margin-bottom:20px;padding-bottom:16px;border-bottom:2px solid #0c3560">'
