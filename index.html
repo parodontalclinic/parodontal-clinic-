@@ -2854,9 +2854,11 @@ function renderPdfPreviewPatient(lang){
   document.getElementById('pdf-preview').innerHTML=html;
 }
 
-function printPdf(){
+async function printPdf(){
   var prev=document.getElementById('pdf-preview');
   if(!prev||prev.querySelector('.loading')){showNotif('Selectează mai întâi un pacient cu plan!',false);return;}
+  // Ensure exchange rates are loaded
+  if(!state_rates.EUR&&!state_rates.USD) await fetchMAIBRates();
   var pat=getPat(state.pdfPatientId||state.selectedPatientId);
   var w=window.open('','_blank');
   w.document.write('<!DOCTYPE html><html><head><title>Plan - '+(pat?pat.name:'Pacient')+'</title><style>');
@@ -3351,6 +3353,8 @@ async function deleteReceiptSession(patId, sessionKey){
 
 async function printReceiptSession(patId, sessionKey, bonNr, lang){
   lang=lang||'ro';
+  // Ensure exchange rates are loaded
+  if(!state_rates.EUR&&!state_rates.USD) await fetchMAIBRates();
   var pat=state.patients.find(function(p){return p.id===patId;})||{};
 
   // Receipt translations
@@ -3412,22 +3416,21 @@ async function printReceiptSession(patId, sessionKey, bonNr, lang){
   var totalLabel={ro:'Total',ru:'Итого',en:'Total',it:'Totale'};
   var totalDiscLabel={ro:'Total cu reducere',ru:'Итого со скидкой',en:'Total (discounted)',it:'Totale (scontato)'};
 
-  // EUR/USD conversion
-  if(!state_rates.fetchedAt) fetchMAIBRates();
-  var fmtEur=state_rates.EUR?'\u2248 '+(total/state_rates.EUR).toFixed(0)+' \u20ac':'';
-  var fmtUsd=state_rates.USD?'\u2248 '+(total/state_rates.USD).toFixed(0)+' $':'';
-  var currencyLine=(fmtEur||fmtUsd)
-    ?'<div style="font-size:12px;color:#000;margin-top:4px;font-weight:600">'+(fmtEur?'<span style="margin-right:12px">'+fmtEur+'</span>':'')+fmtUsd+'</div>'
-    :'';
+  // EUR/USD conversion — rates already loaded at function start
+  var eurRate=state_rates.EUR||20.0;
+  var usdRate=state_rates.USD||17.8;
+  var fmtEur='\u2248 '+(total/eurRate).toFixed(0)+' \u20ac';
+  var fmtUsd='\u2248 '+(total/usdRate).toFixed(0)+' $';
+  var currencyLine='<div style="font-size:12px;color:#000;margin-top:4px;font-weight:600"><span style="margin-right:12px">'+fmtEur+'</span>'+fmtUsd+'</div>';
 
   var totalHtml=hasDisc
     ?'<div style="text-align:right">'
-      +'<div style="font-size:12px;color:#94a3b8;text-decoration:line-through">'+fmt(totalBrut)+'</div>'
-      +'<div style="font-size:16px;font-weight:700;color:#16a34a">'+(totalDiscLabel[lang]||totalDiscLabel.ro)+': '+fmt(total)+'</div>'
+      +'<div style="font-size:12px;color:#000;text-decoration:line-through">'+fmt(totalBrut)+'</div>'
+      +'<div style="font-size:16px;font-weight:700;color:#000">'+(totalDiscLabel[lang]||totalDiscLabel.ro)+': '+fmt(total)+'</div>'
       +currencyLine
       +'</div>'
     :'<div style="text-align:right">'
-      +'<div style="font-size:16px;font-weight:700;color:#0c3560">'+(totalLabel[lang]||totalLabel.ro)+': '+fmt(total)+'</div>'
+      +'<div style="font-size:16px;font-weight:700;color:#000">'+(totalLabel[lang]||totalLabel.ro)+': '+fmt(total)+'</div>'
       +currencyLine
       +'</div>'
 
@@ -4935,7 +4938,7 @@ async function fetchMAIBRates(){
     }
   }catch(e){}
   // Final fallback: approximate rates
-  state_rates.EUR=19.5;
+  state_rates.EUR=20.0;
   state_rates.USD=17.8;
   state_rates.fetchedAt=null;
   return false;
