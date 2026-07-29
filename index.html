@@ -291,6 +291,15 @@ tr:last-child td{border-bottom:none}
             <input id="p-bday-yy" type="text" maxlength="4" placeholder="AAAA" style="width:70px;text-align:center" oninput="this.value=this.value.replace(/[^0-9]/g,'')">
           </div>
           <label>Nr. Cartelă medicală</label><input id="p-diag" placeholder="Ex: 001234">
+          <label>Limba vorbită</label>
+          <select id="p-lang">
+            <option value="">— Selectează —</option>
+            <option value="Română">🇷🇴 Română</option>
+            <option value="Rusă">🇷🇺 Rusă</option>
+            <option value="Engleză">🇬🇧 Engleză</option>
+            <option value="Italiană">🇮🇹 Italiană</option>
+            <option value="Altă limbă">🌐 Altă limbă</option>
+          </select>
           <label>Observații</label><textarea id="p-notes" placeholder="Note suplimentare..."></textarea>
           <button class="btn btn-primary btn-full" onclick="addPatient()">+ Salvează pacient</button>
         </div>
@@ -1832,6 +1841,20 @@ function renderPatients(){
       +' onfocus="this.style.borderColor=\'#0c3560\'"'
       +'>'
       +'</div>'
+      +'<div style="display:flex;align-items:center;gap:4px;margin-top:4px" onclick="event.stopPropagation()">'
+      +'<span style="font-size:11px;color:#94a3b8;white-space:nowrap">🌐</span>'
+      +'<select id="lang-'+p.id+'" onchange="savePatientLang(\''+p.id+'\')" '
+      +'style="flex:1;font-size:12px;color:#64748b;border:1px solid transparent;border-radius:6px;padding:3px 6px;background:transparent;outline:none;cursor:pointer" '
+      +'onfocus="this.style.borderColor=\'#0c3560\';this.style.background=\'#fff\'" '
+      +'onblur="this.style.borderColor=\'transparent\';this.style.background=\'transparent\'">'
+      +'<option value="">— Limbă —</option>'
+      +'<option value="Română"'+(p.language==="Română"?' selected':'')+'>🇷🇴 Română</option>'
+      +'<option value="Rusă"'+(p.language==="Rusă"?' selected':'')+'>🇷🇺 Rusă</option>'
+      +'<option value="Engleză"'+(p.language==="Engleză"?' selected':'')+'>🇬🇧 Engleză</option>'
+      +'<option value="Italiană"'+(p.language==="Italiană"?' selected':'')+'>🇮🇹 Italiană</option>'
+      +'<option value="Altă limbă"'+(p.language==="Altă limbă"?' selected':'')+'>🌐 Altă limbă</option>'
+      +'</select>'
+      +'</div>'
       +debtHtml
       +'</div>'
       +'<button class="btn btn-danger" onclick="event.stopPropagation();deletePatient(\''+p.id+'\',\''+esc(p.name)+'\')" style="padding:3px 8px;font-size:11px;flex-shrink:0;margin-top:0">✕</button>'
@@ -1846,6 +1869,18 @@ function renderPatients(){
         :'')
       +'</div>';
   }).join('');
+}
+
+async function savePatientLang(patId){
+  var sel=document.getElementById('lang-'+patId);
+  if(!sel) return;
+  var newLang=sel.value||null;
+  var pat=state.patients.find(function(p){return p.id===patId;});
+  if(!pat||(pat.language||null)===(newLang)) return;
+  var{error}=await sb.from('patients').update({language:newLang}).eq('id',patId);
+  if(error){showNotif('Eroare: '+error.message,false);return;}
+  pat.language=newLang;
+  showNotif('✓ Limbă salvată!');
 }
 
 async function savePatientName(patId){
@@ -2008,12 +2043,12 @@ async function addPatient(){
   if(bddd.trim()&&bdmm.trim()&&bdyy.trim()&&bdyy.trim().length===4){
     birthdate=bdyy.trim()+'-'+bdmm.trim().padStart(2,'0')+'-'+bddd.trim().padStart(2,'0');
   }
-  var obj={name,phone:document.getElementById('p-phone').value,diagnosis:document.getElementById('p-diag').value,notes:document.getElementById('p-notes').value,birthdate:birthdate};
+  var obj={name,phone:document.getElementById('p-phone').value,diagnosis:document.getElementById('p-diag').value,notes:document.getElementById('p-notes').value,birthdate:birthdate,language:(document.getElementById('p-lang')||{}).value||null};
   var{data,error}=await sb.from('patients').insert([obj]).select().single();
   if(error){showNotif('Eroare: '+error.message,false);return;}
   state.patients.push(data);
   state.patients.sort(function(a,b){return (a.name||'').localeCompare(b.name||'','ro');});
-  ['p-lastname','p-firstname','p-phone','p-bday-dd','p-bday-mm','p-bday-yy','p-diag','p-notes'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});
+  ['p-lastname','p-firstname','p-phone','p-bday-dd','p-bday-mm','p-bday-yy','p-diag','p-notes'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});var pl=document.getElementById('p-lang');if(pl)pl.value='';
   state.selectedPatientId=data.id;state.stages=[];state.stageItems={};state.activeStageId=null;
   populatePatientSelect();renderPdfPatientSelect();renderPatients();renderTreatment();updateStats();
   showNotif('✓ Pacient salvat!');
