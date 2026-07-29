@@ -2846,19 +2846,26 @@ function printPdf(){
   var pat=getPat(state.pdfPatientId||state.selectedPatientId);
   var w=window.open('','_blank');
   w.document.write('<!DOCTYPE html><html><head><title>Plan - '+(pat?pat.name:'Pacient')+'</title><style>');
-  w.document.write('*{box-sizing:border-box;margin:0;padding:0}');
+  w.document.write('*{box-sizing:border-box;margin:0;padding:0;color:#000!important;background:transparent!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}');
+  w.document.write('body{font-family:Arial,sans-serif;font-size:12px;padding:20px;color:#000;max-width:720px;margin:0 auto}');
+  w.document.write('u{text-decoration:underline}');
+  w.document.write('strong{font-weight:700}');
+  w.document.write('img{display:block}');
+  w.document.write('div[style*="border-bottom"]{border-bottom:1px solid #000!important}');
+  w.document.write('div[style*="border-top"]{border-top:1px solid #000!important}');
+  w.document.write('div[style*="border-left"]{border-left:2px solid #000!important}');
+  w.document.write('span[style*="background"]{background:transparent!important;border:1px solid #000}');
+  w.document.write('table{width:100%;border-collapse:collapse}');
+  w.document.write('th{border:1px solid #000;padding:5px 8px;font-size:11px;font-weight:700;text-align:left}');
+  w.document.write('td{border:1px solid #aaa;padding:5px 8px;vertical-align:middle}');
+  w.document.write('.check-box{width:14px;height:14px;border:1.5px solid #000;display:inline-block}');
+  w.document.write('.pdf-page{padding:0}');
+  w.document.write('.pdf-header{display:flex;align-items:center;gap:14px;padding-bottom:12px;border-bottom:2px solid #000;margin-bottom:14px}');
+  w.document.write('.pdf-clinic-name{font-size:14px;font-weight:700}');
+  w.document.write('@page{margin:15mm}');
+  w.document.write('@media print{body{padding:0}}');
   if(pdfType==='patient'){
-    w.document.write('body{font-family:Georgia,serif;font-size:13px;padding:24px;color:#1e293b;max-width:700px;margin:0 auto}');
-    w.document.write('u{text-decoration:underline}');
-    w.document.write('@media print{body{padding:16px}}');
-  } else {
-    w.document.write('body{font-family:Arial,sans-serif;font-size:12px;padding:20px;color:#1e293b}');
-    w.document.write('table{width:100%;border-collapse:collapse}th{background:#f1f5f9;padding:6px 8px;text-align:left;font-size:11px;font-weight:600}td{padding:6px 8px;border-top:1px solid #f1f5f9;vertical-align:middle}');
-    w.document.write('.check-box{width:16px;height:16px;border:1.5px solid #94a3b8;border-radius:3px;display:inline-block}');
-    w.document.write('.pdf-page{padding:20px}');
-    w.document.write('.pdf-header{display:flex;align-items:center;gap:14px;padding-bottom:14px;border-bottom:1px solid #e2e8f0;margin-bottom:14px}');
-    w.document.write('.pdf-clinic-name{font-size:15px;font-weight:700;color:#0c3560}');
-    w.document.write('@media print{body{padding:10px}}');
+    w.document.write('body{font-family:Arial,sans-serif;font-size:13px}');
   }
   w.document.write('</style></head><body>');
   w.document.write(prev.innerHTML);
@@ -3437,7 +3444,7 @@ async function printReceiptSession(patId, sessionKey, bonNr, lang){
 
   var w=window.open('','_blank');
   w.document.write('<!DOCTYPE html><html lang="'+lang+'"><head><meta charset="UTF-8"><title>'+T.bon+' #'+bonNr+' - '+esc(pat.name||'')+'</title>');
-  w.document.write('<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,Helvetica,sans-serif;font-size:13px;padding:16px;max-width:480px;margin:0 auto}.bon-copy{padding:16px 0}.separator{border:none;border-top:2px dashed #cbd5e1;margin:16px 0}@media print{body{padding:8px}.bon-copy{break-inside:avoid}.page-break{page-break-before:always}}</style>');
+  w.document.write('<style>*{box-sizing:border-box;margin:0;padding:0;color:#000!important;background:transparent!important}body{font-family:Arial,Helvetica,sans-serif;font-size:13px;padding:16px;max-width:480px;margin:0 auto}img{display:block}div[style*="border-bottom"]{border-bottom:1px solid #000!important}div[style*="border-top"]{border-top:2px solid #000!important}span[style*="background"]{background:transparent!important;border:1px solid #000!important}.bon-copy{padding:16px 0}.separator{border:none;border-top:2px dashed #000;margin:16px 0}@media print{body{padding:4px}@page{margin:10mm}.bon-copy{break-inside:avoid}.page-break{page-break-before:always}}</style>');
   w.document.write('</head><body>');
   w.document.write(buildCopy(T.copy1));
   w.document.write('<div class="separator"></div>');
