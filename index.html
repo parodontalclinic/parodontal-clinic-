@@ -324,7 +324,10 @@ tr:last-child td{border-bottom:none}
             <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg>
             Plan tratament — <span id="treatment-modal-patient-name" style="color:#475569;font-weight:500"></span>
           </div>
-          <button onclick="closeTreatmentModal()" style="background:#f1f5f9;border:none;border-radius:8px;padding:6px 12px;cursor:pointer;font-size:13px;color:#64748b">✕ Închide</button>
+          <div style="display:flex;align-items:center;gap:12px">
+            <span id="plan-created-date" style="font-size:11px;color:#94a3b8;font-style:italic"></span>
+            <button onclick="closeTreatmentModal()" style="background:#f1f5f9;border:none;border-radius:8px;padding:6px 12px;cursor:pointer;font-size:13px;color:#64748b">✕ Închide</button>
+          </div>
         </div>
         <div style="overflow-y:auto;flex:1;min-height:0">
           <div id="tab-treatment" style="padding:16px">
@@ -1990,8 +1993,24 @@ async function openTreatmentModal(id){
   await selectPatient(id);
   var modal=document.getElementById('treatment-modal');
   var nameEl=document.getElementById('treatment-modal-patient-name');
+  var dateEl=document.getElementById('plan-created-date');
   var pat=state.patients.find(function(p){return p.id===id;});
   if(nameEl) nameEl.textContent=pat?pat.name:'';
+
+  // Set or show plan creation date
+  if(pat){
+    if(!pat.plan_created_at){
+      // First time opening plan — save date
+      var now=new Date().toISOString();
+      await sb.from('patients').update({plan_created_at:now}).eq('id',id);
+      pat.plan_created_at=now;
+    }
+    if(dateEl){
+      var d=new Date(pat.plan_created_at);
+      dateEl.textContent='Plan creat: '+d.toLocaleDateString('ro-RO',{day:'2-digit',month:'long',year:'numeric'});
+    }
+  }
+
   modal.classList.remove('hidden');modal.style.display='flex';
 }
 
@@ -2678,7 +2697,11 @@ function renderPdfPreviewWithLang(lang){
     ?'<div style="margin-top:14px;padding-top:12px;border-top:2px solid #000;display:flex;flex-direction:column;align-items:flex-end;gap:4px">'       +'<div style="font-size:13px;color:#555">'+t.grandTotal+' fără reducere: <span style="font-weight:600;text-decoration:line-through">'+fmtCurrency(gt)+'</span></div>'       +'<div style="font-size:18px;font-weight:700;color:#000">'+t.grandTotal+': '+fmtCurrency(gtWithDisc)+'</div>'+planCurrLine+'</div>'
     :'<div style="margin-top:14px;text-align:right;padding-top:12px;border-top:2px solid #000"><div style="font-size:16px;font-weight:700;color:#000">'+t.grandTotal+': '+fmtCurrency(gt)+'</div>'+planCurrLine+'</div>';
 
-  var html='<div class="pdf-page">'    +'<div class="pdf-header"><img src="'+LOGO_B64+'" style="height:60px;object-fit:contain;max-width:200px">'    +'<div style="flex:1"><div style="font-size:12px;color:#64748b;margin-top:2px">'+t.planTitle+'</div>'    +'<div style="font-size:11px;color:#94a3b8;margin-top:2px">'+esc(phone)+(addr?' · '+esc(addr):'')+'</div></div>'    +'<div style="text-align:right;font-size:11px;color:#94a3b8">'+t.date+': '+today  +((document.getElementById('pdf-currency')||{}).value&&(document.getElementById('pdf-currency')||{}).value!=='MDL'    ?'<br><span style="font-size:10px;color:#000;font-weight:700;border:1px solid #000;padding:1px 4px">'+((document.getElementById('pdf-currency')||{}).value||'MDL')+(state_rates.EUR||state_rates.USD?(' · 1 '+((document.getElementById('pdf-currency')||{}).value||'')+'='+(((document.getElementById('pdf-currency')||{}).value==='EUR'?state_rates.EUR:state_rates.USD)||'').toFixed(2)+' MDL'):'')+'</span>'    :'')  +'</div></div>'    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px;margin-bottom:16px;background:#f8fafc;padding:12px;border-radius:8px">'    +'<div><strong>'+t.patient+':</strong> '+esc(pat?pat.name:'—')+'</div>'    +'<div><strong>'+t.doctor+':</strong> '+esc(doctor||'Dr. ______________')+'</div>'    +(pat&&pat.diagnosis?'<div style="grid-column:span 2"><strong>Diagnostic:</strong> '+esc(pat.diagnosis)+'</div>':'')    +'</div>'    +stagesHtml    +'<div style="margin-top:14px;padding:12px;background:#f0fdf4;border-radius:8px;font-size:12px;border:1px solid #bbf7d0"><strong>'+t.recommendations+':</strong> '+t.rec+'</div>'    +grandTotalBox    +'<div style="margin-top:20px;display:grid;grid-template-columns:1fr 1fr;gap:20px;font-size:12px;color:#64748b">'    +'<div style="border-top:1px solid #e2e8f0;padding-top:8px">Semnătura medicului</div>'    +'<div style="border-top:1px solid #e2e8f0;padding-top:8px">Semnătura pacientului</div></div>'    +'</div>';
+  var html='<div class="pdf-page">'    +'<div class="pdf-header"><img src="'+LOGO_B64+'" style="height:60px;object-fit:contain;max-width:200px">'    +'<div style="flex:1"><div style="font-size:12px;color:#64748b;margin-top:2px">'+t.planTitle+'</div>'    +'<div style="font-size:11px;color:#94a3b8;margin-top:2px">'+esc(phone)+(addr?' · '+esc(addr):'')+'</div></div>'    +'<div style="text-align:right;font-size:11px;color:#94a3b8">'
+    +(state.stages.length&&state.stages[0].created_at
+      ?'<div style="font-size:10px;color:#94a3b8;margin-bottom:2px">Plan creat: '+new Date(state.stages[0].created_at).toLocaleDateString('ro-RO')+'</div>'
+      :'')
+    +t.date+': '+today  +((document.getElementById('pdf-currency')||{}).value&&(document.getElementById('pdf-currency')||{}).value!=='MDL'    ?'<br><span style="font-size:10px;color:#000;font-weight:700;border:1px solid #000;padding:1px 4px">'+((document.getElementById('pdf-currency')||{}).value||'MDL')+(state_rates.EUR||state_rates.USD?(' · 1 '+((document.getElementById('pdf-currency')||{}).value||'')+'='+(((document.getElementById('pdf-currency')||{}).value==='EUR'?state_rates.EUR:state_rates.USD)||'').toFixed(2)+' MDL'):'')+'</span>'    :'')  +'</div></div>'    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px;margin-bottom:16px;background:#f8fafc;padding:12px;border-radius:8px">'    +'<div><strong>'+t.patient+':</strong> '+esc(pat?pat.name:'—')+'</div>'    +'<div><strong>'+t.doctor+':</strong> '+esc(doctor||'Dr. ______________')+'</div>'    +(pat&&pat.diagnosis?'<div style="grid-column:span 2"><strong>Diagnostic:</strong> '+esc(pat.diagnosis)+'</div>':'')    +'</div>'    +stagesHtml    +'<div style="margin-top:14px;padding:12px;background:#f0fdf4;border-radius:8px;font-size:12px;border:1px solid #bbf7d0"><strong>'+t.recommendations+':</strong> '+t.rec+'</div>'    +grandTotalBox    +'<div style="margin-top:20px;display:grid;grid-template-columns:1fr 1fr;gap:20px;font-size:12px;color:#64748b">'    +'<div style="border-top:1px solid #e2e8f0;padding-top:8px">Semnătura medicului</div>'    +'<div style="border-top:1px solid #e2e8f0;padding-top:8px">Semnătura pacientului</div></div>'    +'</div>';
   document.getElementById('pdf-preview').innerHTML=html;
 }
 
@@ -2842,6 +2865,7 @@ function renderPdfPreviewPatient(lang){
     +'<div><strong>'+t.doctor+':</strong> '+esc(doctor||'Dr. ______________')+'</div>'
     +(pat&&pat.diagnosis?'<div style="grid-column:span 2"><strong>Diagnostic:</strong> '+esc(pat.diagnosis)+'</div>':'')
     +'<div><strong>'+t.date+':</strong> '+today+'</div>'
+    +(state.stages.length&&state.stages[0].created_at?'<div style="font-size:11px;color:#555">Plan creat: '+new Date(state.stages[0].created_at).toLocaleDateString('ro-RO')+'</div>':'')
     +'</div>'
     +stagesHtml
     +grandTotalHtml
