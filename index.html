@@ -213,6 +213,9 @@ tr:last-child td{border-bottom:none}
     <button class="sidebar-btn" id="sbtn-trash" onclick="switchTab('trash')" style="color:rgba(255,100,100,0.9)">
       <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>Coș gunoi
     </button>
+    <button class="sidebar-btn" id="sbtn-recommendations" onclick="switchTab('recommendations')">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h4"/></svg>Recomandări
+    </button>
 
     <div class="sidebar-spacer"></div>
     <div class="sidebar-user">
@@ -807,6 +810,19 @@ tr:last-child td{border-bottom:none}
       </div>
     </div>
     <!-- END TRASH TAB -->
+
+    <!-- RECOMMENDATIONS TAB -->
+    <div id="tab-recommendations" class="tab-content">
+      <div style="max-width:900px;margin:0 auto">
+        <div style="margin-bottom:20px">
+          <h2 style="font-size:18px;font-weight:700;color:#0c3560;margin-bottom:4px">📋 Recomandări pentru pacienți</h2>
+          <p style="font-size:13px;color:#64748b">Recomandări predefinite după procedurile efectuate. Click pe o recomandare pentru a o copia.</p>
+        </div>
+
+        <div id="rec-categories" style="display:flex;flex-direction:column;gap:16px"></div>
+      </div>
+    </div>
+    <!-- END RECOMMENDATIONS TAB -->
 
     
 
@@ -2928,6 +2944,7 @@ function switchTab(tab){
   if(tab==='reminders'){populateReminderPatientSelect();loadReminders();}
   if(tab==='receipt') loadReceiptPatients();
   if(tab==='trash') renderTrash();
+  if(tab==='recommendations') renderRecommendations();
 
   if(tab==='calendar'){
     loadCalendar().then(function(){
@@ -4040,6 +4057,211 @@ async function deleteMedCard(id, name){
   showNotif('✓ Cartelă ștearsă.');
 }
 // ---- END CARTELE MEDICALE ----
+
+// ---- RECOMANDĂRI ----
+var RECOMMENDATIONS=[
+  {
+    category:'🦷 Extracție dentară',
+    color:'#dc2626',
+    items:[
+      'Nu clătiți gura și nu scuipați timp de 24 ore după extracție.',
+      'Aplicați compresa rece (gheață învelită în prosop) pe obraz câte 15 minute, cu pauze de 15 minute, în primele 2-3 ore.',
+      'Nu fumați și nu consumați alcool timp de 72 ore după extracție.',
+      'Nu consumați alimente fierbinți, tari sau picante în ziua extracției. Preferați alimente moi și reci.',
+      'Luați medicamentele prescrise conform indicațiilor medicului.',
+      'Dacă sângerarea nu se oprește, mușcați ferm un tifon steril timp de 30 minute.',
+      'Nu introduceți degetul sau limba în locul extracției.',
+      'Spălați dinții cu grijă, evitând zona extracției în prima zi.',
+      'Prezentați-vă la control conform programării sau dacă apar dureri intense, umflături mari sau febră.',
+    ]
+  },
+  {
+    category:'🔩 Implant dentar',
+    color:'#0c3560',
+    items:[
+      'Evitați să mâncați sau să beți timp de 2 ore după intervenție.',
+      'Aplicați compresă rece pe obraz în primele 24-48 ore (15 min pe, 15 min pauză).',
+      'Nu fumați cel puțin 2 săptămâni după plasarea implantului — fumatul compromite oseointegarea.',
+      'Evitați efortul fizic intens timp de 5-7 zile.',
+      'Nu atingeți zona implantului cu limba sau degetul.',
+      'Luați antibioticele și antiinflamatoarele prescrise conform schemei.',
+      'Clătiți ușor cu apă oxigenată diluată sau cu soluție de clorhexidină 0.12%, de 2 ori pe zi.',
+      'Evitați alimentele tari, lipicioase sau fierbinți timp de 2 săptămâni.',
+      'Prezentați-vă la toate controalele programate — la 1 săptămână, 1 lună și 3 luni.',
+      'Raportați imediat: durere pulsatilă intensă, mobilitatea implantului, gust metalic persistent.',
+    ]
+  },
+  {
+    category:'🧹 Igienizare profesională',
+    color:'#0891b2',
+    items:[
+      'Este normal să simțiți sensibilitate dentară 24-48 ore după igienizare.',
+      'Evitați alimentele și băuturile foarte fierbinți sau reci în ziua igienizării.',
+      'Evitați alimentele și băuturile colorante (cafea, ceai, vin roșu, sfeclă) timp de 24-48 ore.',
+      'Periați dinții de 2 ori pe zi cu o pastă cu fluor și folosiți ața dentară zilnic.',
+      'Utilizați o periuță de dinți cu peri moi sau medii.',
+      'Efectuați igienizare profesională la fiecare 6 luni sau conform recomandării medicului.',
+      'Clătiți gura cu apă după fiecare masă pentru a reduce depunerile bacteriene.',
+    ]
+  },
+  {
+    category:'🦴 Chiuretaj parodontal',
+    color:'#7c3aed',
+    items:[
+      'Este normal să simțiți sensibilitate și ușoară durere 2-3 zile după chiuretaj.',
+      'Evitați alimentele tari și crocante timp de 3-5 zile.',
+      'Clătiți cu soluție de clorhexidină 0.12%, de 2 ori pe zi, timp de 2 săptămâni.',
+      'Nu fumați — fumatul încetinește vindecarea parodontală.',
+      'Luați medicamentele prescrise conform indicațiilor.',
+      'Periați dinții cu grijă, cu mișcări blânde, folosind o periuță moale.',
+      'Folosiți ața dentară sau irigator oral conform indicațiilor medicului.',
+      'Prezentați-vă la control la 4-6 săptămâni după tratament.',
+    ]
+  },
+  {
+    category:'👑 Coroană / Lucrare protetică',
+    color:'#d97706',
+    items:[
+      'Evitați alimentele foarte tari (nuci, gheață) care pot fractura lucrarea.',
+      'Evitați alimentele lipicioase (caramele, gumă de mestecat) care pot dezlipi coroana.',
+      'Igienizați coroana la fel ca un dinte natural — periaj și ață dentară zilnic.',
+      'Folosiți ața dentară sau dușul bucal pentru a curăța zona dintre coroană și gingie.',
+      'Dacă simțiți că mușcătura nu este corectă, prezentați-vă la medic pentru ajustare.',
+      'Evitați să mușcați cu dinții frontali obiecte dure (pixuri, unghii).',
+      'Prezentați-vă la control periodic la fiecare 6-12 luni.',
+    ]
+  },
+  {
+    category:'🦷 Obturație (plombă)',
+    color:'#16a34a',
+    items:[
+      'Nu mâncați timp de 1-2 ore după aplicarea plombei (dacă e pe bază de amalgam — 24 ore).',
+      'Este normal să simțiți sensibilitate la rece, cald sau dulce câteva zile.',
+      'Dacă sensibilitatea persistă mai mult de 2 săptămâni, prezentați-vă la medic.',
+      'Dacă simțiți că mușcătura este prea înaltă, reveniți la cabinet pentru ajustare.',
+      'Evitați alimentele dure și lipicioase în primele 24 ore.',
+      'Periați dinții de 2 ori pe zi și folosiți ața dentară zilnic.',
+    ]
+  },
+  {
+    category:'🔬 Tratament endodontic (devitalizare)',
+    color:'#64748b',
+    items:[
+      'Este normal să simțiți sensibilitate și durere ușoară 2-5 zile după tratament.',
+      'Luați antialgicele prescrise conform indicațiilor.',
+      'Evitați să mestecați pe dintelui tratat până la aplicarea restaurării finale.',
+      'Nu întârziați aplicarea coroanei sau plombei finale — dintele tratat endodontic este fragil.',
+      'Prezentați-vă la control conform programării.',
+      'Dacă apare durere pulsatilă intensă sau umflătură, contactați medicul imediat.',
+    ]
+  },
+  {
+    category:'🌟 Albire dentară',
+    color:'#f59e0b',
+    items:[
+      'Evitați alimentele și băuturile colorante (cafea, ceai, vin, cola, sfeclă) timp de 48 ore.',
+      'Evitați fumatul timp de 48 ore după albire.',
+      'Este normală sensibilitatea dentară — dispare în 24-48 ore.',
+      'Utilizați pastă de dinți pentru dinți sensibili timp de 1-2 săptămâni.',
+      'Evitați alimentele acide (citrice, oțet) timp de 24 ore.',
+      'Rezultatul albirii durează 1-3 ani, în funcție de igienă și alimentație.',
+      'Nu consumați apă cu gaz sau sucuri acidulate timp de 24 ore.',
+    ]
+  },
+  {
+    category:'🔗 Sinare / Augmentare',
+    color:'#be185d',
+    items:[
+      'Evitați să mâncați pe zona tratată timp de 24-48 ore.',
+      'Aplicați compresă rece în primele 24 ore pentru reducerea edemului.',
+      'Luați antibioticele și antiinflamatoarele prescrise conform schemei.',
+      'Clătiți ușor cu clorhexidină 0.12%, de 2 ori pe zi.',
+      'Evitați fumatul și alcoolul timp de minimum 2 săptămâni.',
+      'Nu supuneți zona la presiune sau traumatisme.',
+      'Prezentați-vă la control la 1 săptămână și la 1 lună.',
+    ]
+  },
+];
+
+function renderRecommendations(){
+  var el=document.getElementById('rec-categories');
+  if(!el) return;
+  el.innerHTML=RECOMMENDATIONS.map(function(cat,idx){
+    return '<div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden">'
+      +'<div style="background:'+cat.color+';padding:12px 16px;display:flex;align-items:center;justify-content:space-between">'
+      +'<span style="font-size:14px;font-weight:700;color:#fff">'+cat.category+'</span>'
+      +'<div style="display:flex;gap:6px">'
+      +'<button onclick="copyAllRec(this)" data-text="'+esc(cat.category)+':\n'+cat.items.map(function(r,i){return(i+1)+'. '+r;}).join('\n')+'" '
+      +'style="font-size:11px;padding:4px 10px;border-radius:6px;border:none;background:rgba(255,255,255,0.2);color:#fff;cursor:pointer;font-weight:600">📋 Copiază toate</button>'
+      +'<button onclick="printRec(RECOMMENDATIONS['+idx+'].category,RECOMMENDATIONS['+idx+'].items)" '
+      +'style="font-size:11px;padding:4px 10px;border-radius:6px;border:none;background:rgba(255,255,255,0.2);color:#fff;cursor:pointer;font-weight:600">🖨 Print</button>'
+      +'</div>'
+      +'</div>'
+      +'<div style="padding:8px">'
+      +cat.items.map(function(rec,i){
+        return '<div onclick="copyRec(this)" data-text="'+esc(rec)+'" '
+          +'style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border-radius:8px;cursor:pointer;transition:background 0.1s" '
+          +'onmouseover="this.style.background=\'#f8fafc\'" onmouseout="this.style.background=\'transparent\'">'
+          +'<span style="font-size:11px;color:'+cat.color+';font-weight:700;min-width:20px;margin-top:1px">'+(i+1)+'.</span>'
+          +'<span style="font-size:13px;color:#374151;flex:1;line-height:1.5">'+esc(rec)+'</span>'
+          +'<span style="font-size:11px;color:#94a3b8;white-space:nowrap;margin-top:2px">📋</span>'
+          +'</div>';
+      }).join('')
+      +'</div>'
+      +'</div>';
+  }).join('');
+}
+
+function copyRec(el){
+  var text=el.getAttribute('data-text');
+  navigator.clipboard.writeText(text).then(function(){
+    showNotif('✓ Recomandare copiată!');
+  }).catch(function(){
+    showNotif('Copierea nu a funcționat.',false);
+  });
+}
+
+function printRec(category, items, color){
+  var w=window.open('','_blank');
+  w.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>'+category+'</title>');
+  w.document.write('<style>');
+  w.document.write('*{box-sizing:border-box;margin:0;padding:0}');
+  w.document.write('body{font-family:Arial,sans-serif;font-size:13px;padding:30px;color:#000;max-width:600px;margin:0 auto}');
+  w.document.write('.header{display:flex;align-items:center;gap:14px;padding-bottom:14px;border-bottom:2px solid #000;margin-bottom:20px}');
+  w.document.write('.logo{height:44px}');
+  w.document.write('h1{font-size:16px;font-weight:700;margin-bottom:16px;padding:8px 14px;border-left:4px solid #000;background:#f8f8f8}');
+  w.document.write('ol{padding-left:20px}');
+  w.document.write('li{margin-bottom:10px;line-height:1.6;font-size:13px}');
+  w.document.write('.footer{margin-top:30px;padding-top:14px;border-top:1px solid #ccc;font-size:11px;color:#555;text-align:center}');
+  w.document.write('@media print{body{padding:15px}@page{margin:15mm}}');
+  w.document.write('</style></head><body>');
+  w.document.write('<div class="header">');
+  w.document.write('<img class="logo" src="'+LOGO_B64+'">');
+  w.document.write('<div><div style="font-size:15px;font-weight:700">Parodontal Clinic</div>');
+  w.document.write('<div style="font-size:11px;color:#555">+373 78 766 688 · Chișinău, str. Nicolai Zelinski 15/3</div></div>');
+  w.document.write('</div>');
+  w.document.write('<h1>'+category+'</h1>');
+  w.document.write('<ol>');
+  items.forEach(function(rec){
+    w.document.write('<li>'+rec+'</li>');
+  });
+  w.document.write('</ol>');
+  w.document.write('<div class="footer">Data: '+new Date().toLocaleDateString('ro-RO',{day:'2-digit',month:'long',year:'numeric'})+'</div>');
+  w.document.write('</body></html>');
+  w.document.close();
+  w.focus();
+  setTimeout(function(){w.print();},400);
+}
+
+function copyAllRec(btn){
+  var text=btn.getAttribute('data-text');
+  navigator.clipboard.writeText(text).then(function(){
+    showNotif('✓ Toate recomandările copiate!');
+  }).catch(function(){
+    showNotif('Copierea nu a funcționat.',false);
+  });
+}
+// ---- END RECOMANDĂRI ----
 
 // ---- TRASH / COS GUNOI ----
 async function moveToTrash(type, data, label){
