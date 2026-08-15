@@ -814,9 +814,16 @@ tr:last-child td{border-bottom:none}
     <!-- RECOMMENDATIONS TAB -->
     <div id="tab-recommendations" class="tab-content">
       <div style="max-width:900px;margin:0 auto">
-        <div style="margin-bottom:20px">
-          <h2 style="font-size:18px;font-weight:700;color:#0c3560;margin-bottom:4px">📋 Recomandări pentru pacienți</h2>
-          <p style="font-size:13px;color:#64748b">Recomandări predefinite după procedurile efectuate. Click pe o recomandare pentru a o copia.</p>
+        <div style="margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+          <div>
+            <h2 style="font-size:18px;font-weight:700;color:#0c3560;margin-bottom:4px">📋 Recomandări pentru pacienți</h2>
+            <p style="font-size:13px;color:#64748b">Recomandări predefinite după procedurile efectuate. Click pe o recomandare pentru a o copia.</p>
+          </div>
+          <select id="rec-lang" onchange="renderRecommendations()" style="padding:8px 14px;border-radius:8px;border:1.5px solid #e2e8f0;font-size:13px;color:#0c3560;font-weight:600;outline:none;cursor:pointer">
+            <option value="ro">🇷🇴 Română</option>
+            <option value="ru">🇷🇺 Русский</option>
+            <option value="en">🇬🇧 English</option>
+          </select>
         </div>
 
         <div id="rec-categories" style="display:flex;flex-direction:column;gap:16px"></div>
@@ -4059,141 +4066,57 @@ async function deleteMedCard(id, name){
 // ---- END CARTELE MEDICALE ----
 
 // ---- RECOMANDĂRI ----
-var RECOMMENDATIONS=[
-  {
-    category:'🦷 Extracție dentară',
-    color:'#dc2626',
-    items:[
-      'Nu clătiți gura și nu scuipați timp de 24 ore după extracție.',
-      'Aplicați compresa rece (gheață învelită în prosop) pe obraz câte 15 minute, cu pauze de 15 minute, în primele 2-3 ore.',
-      'Nu fumați și nu consumați alcool timp de 72 ore după extracție.',
-      'Nu consumați alimente fierbinți, tari sau picante în ziua extracției. Preferați alimente moi și reci.',
-      'Luați medicamentele prescrise conform indicațiilor medicului.',
-      'Dacă sângerarea nu se oprește, mușcați ferm un tifon steril timp de 30 minute.',
-      'Nu introduceți degetul sau limba în locul extracției.',
-      'Spălați dinții cu grijă, evitând zona extracției în prima zi.',
-      'Prezentați-vă la control conform programării sau dacă apar dureri intense, umflături mari sau febră.',
-    ]
-  },
-  {
-    category:'🔩 Implant dentar',
-    color:'#0c3560',
-    items:[
-      'Evitați să mâncați sau să beți timp de 2 ore după intervenție.',
-      'Aplicați compresă rece pe obraz în primele 24-48 ore (15 min pe, 15 min pauză).',
-      'Nu fumați cel puțin 2 săptămâni după plasarea implantului — fumatul compromite oseointegarea.',
-      'Evitați efortul fizic intens timp de 5-7 zile.',
-      'Nu atingeți zona implantului cu limba sau degetul.',
-      'Luați antibioticele și antiinflamatoarele prescrise conform schemei.',
-      'Clătiți ușor cu apă oxigenată diluată sau cu soluție de clorhexidină 0.12%, de 2 ori pe zi.',
-      'Evitați alimentele tari, lipicioase sau fierbinți timp de 2 săptămâni.',
-      'Prezentați-vă la toate controalele programate — la 1 săptămână, 1 lună și 3 luni.',
-      'Raportați imediat: durere pulsatilă intensă, mobilitatea implantului, gust metalic persistent.',
-    ]
-  },
-  {
-    category:'🧹 Igienizare profesională',
-    color:'#0891b2',
-    items:[
-      'Este normal să simțiți sensibilitate dentară 24-48 ore după igienizare.',
-      'Evitați alimentele și băuturile foarte fierbinți sau reci în ziua igienizării.',
-      'Evitați alimentele și băuturile colorante (cafea, ceai, vin roșu, sfeclă) timp de 24-48 ore.',
-      'Periați dinții de 2 ori pe zi cu o pastă cu fluor și folosiți ața dentară zilnic.',
-      'Utilizați o periuță de dinți cu peri moi sau medii.',
-      'Efectuați igienizare profesională la fiecare 6 luni sau conform recomandării medicului.',
-      'Clătiți gura cu apă după fiecare masă pentru a reduce depunerile bacteriene.',
-    ]
-  },
-  {
-    category:'🦴 Chiuretaj parodontal',
-    color:'#7c3aed',
-    items:[
-      'Este normal să simțiți sensibilitate și ușoară durere 2-3 zile după chiuretaj.',
-      'Evitați alimentele tari și crocante timp de 3-5 zile.',
-      'Clătiți cu soluție de clorhexidină 0.12%, de 2 ori pe zi, timp de 2 săptămâni.',
-      'Nu fumați — fumatul încetinește vindecarea parodontală.',
-      'Luați medicamentele prescrise conform indicațiilor.',
-      'Periați dinții cu grijă, cu mișcări blânde, folosind o periuță moale.',
-      'Folosiți ața dentară sau irigator oral conform indicațiilor medicului.',
-      'Prezentați-vă la control la 4-6 săptămâni după tratament.',
-    ]
-  },
-  {
-    category:'👑 Coroană / Lucrare protetică',
-    color:'#d97706',
-    items:[
-      'Evitați alimentele foarte tari (nuci, gheață) care pot fractura lucrarea.',
-      'Evitați alimentele lipicioase (caramele, gumă de mestecat) care pot dezlipi coroana.',
-      'Igienizați coroana la fel ca un dinte natural — periaj și ață dentară zilnic.',
-      'Folosiți ața dentară sau dușul bucal pentru a curăța zona dintre coroană și gingie.',
-      'Dacă simțiți că mușcătura nu este corectă, prezentați-vă la medic pentru ajustare.',
-      'Evitați să mușcați cu dinții frontali obiecte dure (pixuri, unghii).',
-      'Prezentați-vă la control periodic la fiecare 6-12 luni.',
-    ]
-  },
-  {
-    category:'🦷 Obturație (plombă)',
-    color:'#16a34a',
-    items:[
-      'Nu mâncați timp de 1-2 ore după aplicarea plombei (dacă e pe bază de amalgam — 24 ore).',
-      'Este normal să simțiți sensibilitate la rece, cald sau dulce câteva zile.',
-      'Dacă sensibilitatea persistă mai mult de 2 săptămâni, prezentați-vă la medic.',
-      'Dacă simțiți că mușcătura este prea înaltă, reveniți la cabinet pentru ajustare.',
-      'Evitați alimentele dure și lipicioase în primele 24 ore.',
-      'Periați dinții de 2 ori pe zi și folosiți ața dentară zilnic.',
-    ]
-  },
-  {
-    category:'🔬 Tratament endodontic (devitalizare)',
-    color:'#64748b',
-    items:[
-      'Este normal să simțiți sensibilitate și durere ușoară 2-5 zile după tratament.',
-      'Luați antialgicele prescrise conform indicațiilor.',
-      'Evitați să mestecați pe dintelui tratat până la aplicarea restaurării finale.',
-      'Nu întârziați aplicarea coroanei sau plombei finale — dintele tratat endodontic este fragil.',
-      'Prezentați-vă la control conform programării.',
-      'Dacă apare durere pulsatilă intensă sau umflătură, contactați medicul imediat.',
-    ]
-  },
-  {
-    category:'🌟 Albire dentară',
-    color:'#f59e0b',
-    items:[
-      'Evitați alimentele și băuturile colorante (cafea, ceai, vin, cola, sfeclă) timp de 48 ore.',
-      'Evitați fumatul timp de 48 ore după albire.',
-      'Este normală sensibilitatea dentară — dispare în 24-48 ore.',
-      'Utilizați pastă de dinți pentru dinți sensibili timp de 1-2 săptămâni.',
-      'Evitați alimentele acide (citrice, oțet) timp de 24 ore.',
-      'Rezultatul albirii durează 1-3 ani, în funcție de igienă și alimentație.',
-      'Nu consumați apă cu gaz sau sucuri acidulate timp de 24 ore.',
-    ]
-  },
-  {
-    category:'🔗 Sinare / Augmentare',
-    color:'#be185d',
-    items:[
-      'Evitați să mâncați pe zona tratată timp de 24-48 ore.',
-      'Aplicați compresă rece în primele 24 ore pentru reducerea edemului.',
-      'Luați antibioticele și antiinflamatoarele prescrise conform schemei.',
-      'Clătiți ușor cu clorhexidină 0.12%, de 2 ori pe zi.',
-      'Evitați fumatul și alcoolul timp de minimum 2 săptămâni.',
-      'Nu supuneți zona la presiune sau traumatisme.',
-      'Prezentați-vă la control la 1 săptămână și la 1 lună.',
-    ]
-  },
-];
+var RECOMMENDATIONS_DATA={
+  ro:[
+    {category:'🦷 Extracție dentară',color:'#dc2626',items:['Nu clătiți gura și nu scuipați timp de 24 ore după extracție.','Aplicați compresa rece pe obraz câte 15 minute cu pauze de 15 minute, în primele 2-3 ore.','Nu fumați și nu consumați alcool timp de 72 ore.','Nu consumați alimente fierbinți, tari sau picante. Preferați alimente moi și reci.','Luați medicamentele prescrise conform indicațiilor.','Dacă sângerarea nu se oprește, mușcați ferm un tifon steril timp de 30 minute.','Nu introduceți degetul sau limba în locul extracției.','Spălați dinții cu grijă, evitând zona extracției în prima zi.','Prezentați-vă la control sau contactați medicul dacă apar dureri intense, umflături sau febră.']},
+    {category:'🔩 Implant dentar',color:'#0c3560',items:['Evitați să mâncați sau să beți timp de 2 ore după intervenție.','Aplicați compresă rece pe obraz în primele 24-48 ore (15 min pe, 15 min pauză).','Nu fumați cel puțin 2 săptămâni — fumatul compromite oseointegarea.','Evitați efortul fizic intens timp de 5-7 zile.','Nu atingeți zona implantului cu limba sau degetul.','Luați antibioticele și antiinflamatoarele prescrise conform schemei.','Clătiți cu soluție de clorhexidină 0.12%, de 2 ori pe zi.','Evitați alimentele tari, lipicioase sau fierbinți timp de 2 săptămâni.','Prezentați-vă la control la 1 săptămână, 1 lună și 3 luni.','Raportați imediat: durere pulsatilă intensă, mobilitatea implantului, gust metalic persistent.']},
+    {category:'🧹 Igienizare profesională',color:'#0891b2',items:['Sensibilitatea dentară 24-48 ore după igienizare este normală.','Evitați alimentele și băuturile fierbinți sau reci în ziua igienizării.','Evitați alimente colorante (cafea, ceai, vin roșu, sfeclă) timp de 24-48 ore.','Periați dinții de 2 ori pe zi cu o pastă cu fluor și folosiți ața dentară zilnic.','Utilizați o periuță de dinți cu peri moi sau medii.','Efectuați igienizare profesională la fiecare 6 luni.','Clătiți gura cu apă după fiecare masă.']},
+    {category:'🦴 Chiuretaj parodontal',color:'#7c3aed',items:['Sensibilitatea și ușoara durere 2-3 zile după chiuretaj este normală.','Evitați alimentele tari și crocante timp de 3-5 zile.','Clătiți cu clorhexidină 0.12%, de 2 ori pe zi, timp de 2 săptămâni.','Nu fumați — fumatul încetinește vindecarea parodontală.','Luați medicamentele prescrise conform indicațiilor.','Periați dinții cu mișcări blânde, folosind o periuță moale.','Folosiți ața dentară sau irigator oral conform indicațiilor medicului.','Prezentați-vă la control la 4-6 săptămâni după tratament.']},
+    {category:'👑 Coroană / Lucrare protetică',color:'#d97706',items:['Evitați alimentele foarte tari (nuci, gheață) care pot fractura lucrarea.','Evitați alimentele lipicioase (caramele, gumă) care pot dezlipi coroana.','Igienizați coroana la fel ca un dinte natural — periaj și ață dentară zilnic.','Folosiți ața dentară sau dușul bucal pentru zona dintre coroană și gingie.','Dacă mușcătura nu este corectă, prezentați-vă la medic pentru ajustare.','Evitați să mușcați obiecte dure cu dinții frontali.','Prezentați-vă la control periodic la fiecare 6-12 luni.']},
+    {category:'🦷 Obturație (plombă)',color:'#16a34a',items:['Nu mâncați timp de 1-2 ore după aplicarea plombei.','Sensibilitatea la rece, cald sau dulce câteva zile este normală.','Dacă sensibilitatea persistă mai mult de 2 săptămâni, prezentați-vă la medic.','Dacă mușcătura este prea înaltă, reveniți la cabinet pentru ajustare.','Evitați alimentele dure și lipicioase în primele 24 ore.','Periați dinții de 2 ori pe zi și folosiți ața dentară zilnic.']},
+    {category:'🔬 Tratament endodontic',color:'#64748b',items:['Sensibilitatea și durerea ușoară 2-5 zile după tratament este normală.','Luați antialgicele prescrise conform indicațiilor.','Evitați să mestecați pe dintelui tratat până la aplicarea restaurării finale.','Nu întârziați aplicarea coroanei sau plombei finale — dintele este fragil.','Prezentați-vă la control conform programării.','Dacă apare durere pulsatilă intensă sau umflătură, contactați medicul imediat.']},
+    {category:'🌟 Albire dentară',color:'#f59e0b',items:['Evitați alimentele colorante (cafea, ceai, vin, cola, sfeclă) timp de 48 ore.','Evitați fumatul timp de 48 ore după albire.','Sensibilitatea dentară după albire dispare în 24-48 ore.','Utilizați pastă pentru dinți sensibili timp de 1-2 săptămâni.','Evitați alimentele acide (citrice, oțet) timp de 24 ore.','Rezultatul albirii durează 1-3 ani în funcție de igienă și alimentație.','Nu consumați apă cu gaz sau sucuri acidulate timp de 24 ore.']},
+    {category:'🔗 Sinare / Augmentare',color:'#be185d',items:['Evitați să mâncați pe zona tratată timp de 24-48 ore.','Aplicați compresă rece în primele 24 ore pentru reducerea edemului.','Luați antibioticele și antiinflamatoarele prescrise conform schemei.','Clătiți ușor cu clorhexidină 0.12%, de 2 ori pe zi.','Evitați fumatul și alcoolul timp de minimum 2 săptămâni.','Nu supuneți zona la presiune sau traumatisme.','Prezentați-vă la control la 1 săptămână și la 1 lună.']},
+  ],
+  ru:[
+    {category:'🦷 Удаление зуба',color:'#dc2626',items:['Не полощите рот и не сплёвывайте в течение 24 часов после удаления.','Прикладывайте холод к щеке по 15 минут с перерывами 15 минут в первые 2-3 часа.','Не курите и не употребляйте алкоголь в течение 72 часов.','Не ешьте горячую, твёрдую или острую пищу. Предпочитайте мягкую и холодную еду.','Принимайте назначенные лекарства строго по схеме.','Если кровотечение не останавливается — прикусите стерильный тампон на 30 минут.','Не трогайте лунку пальцем или языком.','Чистите зубы осторожно, избегая зоны удаления в первый день.','Приходите на осмотр или обратитесь к врачу при сильной боли, отёке или температуре.']},
+    {category:'🔩 Дентальный имплант',color:'#0c3560',items:['Не ешьте и не пейте в течение 2 часов после операции.','Прикладывайте холод к щеке в первые 24-48 часов (15 мин — холод, 15 мин — перерыв).','Не курите минимум 2 недели — курение нарушает остеоинтеграцию.','Избегайте физических нагрузок в течение 5-7 дней.','Не трогайте зону импланта языком или пальцем.','Принимайте антибиотики и противовоспалительные согласно схеме.','Полощите рот раствором хлоргексидина 0.12% дважды в день.','Избегайте твёрдой, липкой и горячей пищи в течение 2 недель.','Приходите на осмотры через 1 неделю, 1 месяц и 3 месяца.','Немедленно сообщите врачу о сильной боли, подвижности импланта, металлическом привкусе.']},
+    {category:'🧹 Профессиональная гигиена',color:'#0891b2',items:['Чувствительность зубов 24-48 часов после чистки — это нормально.','Избегайте очень горячей или холодной пищи в день процедуры.','Избегайте красящих продуктов (кофе, чай, вино, свёкла) в течение 24-48 часов.','Чистите зубы 2 раза в день пастой с фтором и используйте зубную нить ежедневно.','Используйте зубную щётку с мягкой или средней жёсткостью.','Проходите профессиональную гигиену каждые 6 месяцев.','Полощите рот водой после каждого приёма пищи.']},
+    {category:'🦴 Пародонтальный кюретаж',color:'#7c3aed',items:['Чувствительность и лёгкая боль 2-3 дня после кюретажа — это нормально.','Избегайте твёрдой и хрустящей пищи в течение 3-5 дней.','Полощите рот хлоргексидином 0.12% дважды в день в течение 2 недель.','Не курите — курение замедляет заживление пародонта.','Принимайте назначенные лекарства строго по схеме.','Чистите зубы мягкими движениями с мягкой щёткой.','Используйте зубную нить или ирригатор согласно рекомендации врача.','Приходите на осмотр через 4-6 недель после лечения.']},
+    {category:'👑 Коронка / Протез',color:'#d97706',items:['Избегайте очень твёрдой пищи (орехи, лёд), которая может сломать конструкцию.','Избегайте липких продуктов (карамель, жвачка), которые могут снять коронку.','Ухаживайте за коронкой как за натуральным зубом — чистите щёткой и нитью ежедневно.','Используйте зубную нить или ирригатор для очистки под коронкой.','Если чувствуете неправильный прикус — обратитесь к врачу для коррекции.','Не откусывайте твёрдые предметы передними зубами.','Приходите на профилактические осмотры каждые 6-12 месяцев.']},
+    {category:'🦷 Пломба',color:'#16a34a',items:['Не ешьте в течение 1-2 часов после постановки пломбы.','Чувствительность на холодное, горячее или сладкое в первые дни — это нормально.','Если чувствительность сохраняется более 2 недель — обратитесь к врачу.','Если ощущаете высокий прикус — вернитесь в клинику для коррекции.','Избегайте твёрдой и липкой пищи в первые 24 часа.','Чистите зубы 2 раза в день и используйте зубную нить ежедневно.']},
+    {category:'🔬 Эндодонтическое лечение',color:'#64748b',items:['Лёгкая боль и чувствительность 2-5 дней после лечения — это нормально.','Принимайте обезболивающие согласно назначению врача.','Не жуйте на этом зубе до постановки постоянной реставрации.','Не откладывайте установку коронки — депульпированный зуб хрупкий.','Приходите на осмотр согласно назначению.','При сильной боли или отёке — немедленно обратитесь к врачу.']},
+    {category:'🌟 Отбеливание зубов',color:'#f59e0b',items:['Избегайте красящих продуктов (кофе, чай, вино, кола, свёкла) в течение 48 часов.','Не курите в течение 48 часов после отбеливания.','Чувствительность зубов после отбеливания проходит через 24-48 часов.','Используйте пасту для чувствительных зубов в течение 1-2 недель.','Избегайте кислых продуктов (цитрусовые, уксус) в течение 24 часов.','Результат отбеливания сохраняется 1-3 года в зависимости от гигиены и питания.','Не пейте газированную воду и кислые соки в течение 24 часов.']},
+    {category:'🔗 Шинирование / Аугментация',color:'#be185d',items:['Не жуйте в зоне лечения в течение 24-48 часов.','Прикладывайте холод в первые 24 часа для уменьшения отёка.','Принимайте антибиотики и противовоспалительные по назначению.','Полощите рот хлоргексидином 0.12% дважды в день.','Не курите и не употребляйте алкоголь минимум 2 недели.','Не подвергайте область лечения давлению или травмам.','Приходите на осмотр через 1 неделю и 1 месяц.']},
+  ],
+  en:[
+    {category:'🦷 Tooth Extraction',color:'#dc2626',items:['Do not rinse your mouth or spit for 24 hours after extraction.','Apply a cold compress to your cheek for 15 minutes with 15-minute breaks during the first 2-3 hours.','Do not smoke or drink alcohol for 72 hours after extraction.','Avoid hot, hard or spicy food. Prefer soft and cold foods.','Take prescribed medications as directed.','If bleeding does not stop, firmly bite on sterile gauze for 30 minutes.','Do not touch the extraction site with your finger or tongue.','Brush carefully, avoiding the extraction area on the first day.','Attend your follow-up or contact us if you experience intense pain, swelling, or fever.']},
+    {category:'🔩 Dental Implant',color:'#0c3560',items:['Avoid eating or drinking for 2 hours after the procedure.','Apply a cold compress to your cheek for the first 24-48 hours (15 min on, 15 min off).','Do not smoke for at least 2 weeks — smoking compromises osseointegration.','Avoid intense physical activity for 5-7 days.','Do not touch the implant area with your tongue or finger.','Take prescribed antibiotics and anti-inflammatories as directed.','Rinse with 0.12% chlorhexidine solution twice a day.','Avoid hard, sticky, or hot foods for 2 weeks.','Attend check-ups at 1 week, 1 month, and 3 months.','Report immediately: intense throbbing pain, implant mobility, persistent metallic taste.']},
+    {category:'🧹 Professional Cleaning',color:'#0891b2',items:['Tooth sensitivity for 24-48 hours after cleaning is normal.','Avoid very hot or cold food on the day of the procedure.','Avoid staining foods (coffee, tea, red wine, beetroot) for 24-48 hours.','Brush twice a day with fluoride toothpaste and floss daily.','Use a soft or medium toothbrush.','Have professional cleaning every 6 months.','Rinse your mouth with water after each meal.']},
+    {category:'🦴 Periodontal Curettage',color:'#7c3aed',items:['Mild sensitivity and discomfort for 2-3 days after curettage is normal.','Avoid hard and crunchy foods for 3-5 days.','Rinse with 0.12% chlorhexidine solution twice a day for 2 weeks.','Do not smoke — smoking delays periodontal healing.','Take prescribed medications as directed.','Brush gently with a soft toothbrush.','Use dental floss or an oral irrigator as recommended.','Attend your follow-up 4-6 weeks after treatment.']},
+    {category:'👑 Crown / Prosthetic Work',color:'#d97706',items:['Avoid very hard foods (nuts, ice) that may fracture the restoration.','Avoid sticky foods (caramel, chewing gum) that may dislodge the crown.','Care for the crown like a natural tooth — brush and floss daily.','Use floss or an oral irrigator to clean under the crown.','If your bite feels incorrect, visit your doctor for adjustment.','Avoid biting hard objects with front teeth.','Attend regular check-ups every 6-12 months.']},
+    {category:'🦷 Filling',color:'#16a34a',items:['Do not eat for 1-2 hours after the filling is placed.','Sensitivity to cold, heat or sweet for a few days is normal.','If sensitivity persists for more than 2 weeks, visit your doctor.','If your bite feels too high, return to the clinic for adjustment.','Avoid hard and sticky foods for the first 24 hours.','Brush twice a day and floss daily.']},
+    {category:'🔬 Root Canal Treatment',color:'#64748b',items:['Mild pain and sensitivity for 2-5 days after treatment is normal.','Take pain relief medication as prescribed.','Avoid chewing on the treated tooth until the final restoration is placed.','Do not delay placing the crown — the treated tooth is fragile.','Attend your follow-up as scheduled.','If intense pain or swelling occurs, contact your doctor immediately.']},
+    {category:'🌟 Teeth Whitening',color:'#f59e0b',items:['Avoid staining foods (coffee, tea, wine, cola, beetroot) for 48 hours.','Do not smoke for 48 hours after whitening.','Tooth sensitivity after whitening subsides within 24-48 hours.','Use toothpaste for sensitive teeth for 1-2 weeks.','Avoid acidic foods (citrus, vinegar) for 24 hours.','Whitening results last 1-3 years depending on hygiene and diet.','Avoid fizzy water and acidic juices for 24 hours.']},
+    {category:'🔗 Splinting / Augmentation',color:'#be185d',items:['Avoid chewing in the treated area for 24-48 hours.','Apply cold compress during the first 24 hours to reduce swelling.','Take prescribed antibiotics and anti-inflammatories.','Rinse gently with 0.12% chlorhexidine twice a day.','Avoid smoking and alcohol for at least 2 weeks.','Do not apply pressure or trauma to the treated area.','Attend check-ups at 1 week and 1 month.']},
+  ]
+};
+
+var RECOMMENDATIONS=RECOMMENDATIONS_DATA.ro;
 
 function renderRecommendations(){
+  var lang=(document.getElementById('rec-lang')||{}).value||'ro';
+  var data=RECOMMENDATIONS_DATA[lang]||RECOMMENDATIONS_DATA.ro;
   var el=document.getElementById('rec-categories');
   if(!el) return;
-  el.innerHTML=RECOMMENDATIONS.map(function(cat,idx){
+  el.innerHTML=data.map(function(cat,idx){
     return '<div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden">'
       +'<div style="background:'+cat.color+';padding:12px 16px;display:flex;align-items:center;justify-content:space-between">'
       +'<span style="font-size:14px;font-weight:700;color:#fff">'+cat.category+'</span>'
       +'<div style="display:flex;gap:6px">'
       +'<button onclick="copyAllRec(this)" data-text="'+esc(cat.category)+':\n'+cat.items.map(function(r,i){return(i+1)+'. '+r;}).join('\n')+'" '
-      +'style="font-size:11px;padding:4px 10px;border-radius:6px;border:none;background:rgba(255,255,255,0.2);color:#fff;cursor:pointer;font-weight:600">📋 Copiază toate</button>'
-      +'<button onclick="printRec(RECOMMENDATIONS['+idx+'].category,RECOMMENDATIONS['+idx+'].items)" '
+      +'style="font-size:11px;padding:4px 10px;border-radius:6px;border:none;background:rgba(255,255,255,0.2);color:#fff;cursor:pointer;font-weight:600">📋 Copiază</button>'
+      +'<button onclick="printRecByLang(\''+lang+'\','+idx+')" '
       +'style="font-size:11px;padding:4px 10px;border-radius:6px;border:none;background:rgba(255,255,255,0.2);color:#fff;cursor:pointer;font-weight:600">🖨 Print</button>'
       +'</div>'
       +'</div>'
@@ -4201,7 +4124,7 @@ function renderRecommendations(){
       +cat.items.map(function(rec,i){
         return '<div onclick="copyRec(this)" data-text="'+esc(rec)+'" '
           +'style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border-radius:8px;cursor:pointer;transition:background 0.1s" '
-          +'onmouseover="this.style.background=\'#f8fafc\'" onmouseout="this.style.background=\'transparent\'">'
+          +'onmouseover="this.style.background=\'#f8fafc\'" onmouseout="this.style.background=\'transparent\'">' 
           +'<span style="font-size:11px;color:'+cat.color+';font-weight:700;min-width:20px;margin-top:1px">'+(i+1)+'.</span>'
           +'<span style="font-size:13px;color:#374151;flex:1;line-height:1.5">'+esc(rec)+'</span>'
           +'<span style="font-size:11px;color:#94a3b8;white-space:nowrap;margin-top:2px">📋</span>'
@@ -4212,54 +4135,11 @@ function renderRecommendations(){
   }).join('');
 }
 
-function copyRec(el){
-  var text=el.getAttribute('data-text');
-  navigator.clipboard.writeText(text).then(function(){
-    showNotif('✓ Recomandare copiată!');
-  }).catch(function(){
-    showNotif('Copierea nu a funcționat.',false);
-  });
-}
-
-function printRec(category, items, color){
-  var w=window.open('','_blank');
-  w.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>'+category+'</title>');
-  w.document.write('<style>');
-  w.document.write('*{box-sizing:border-box;margin:0;padding:0}');
-  w.document.write('body{font-family:Arial,sans-serif;font-size:13px;padding:30px;color:#000;max-width:600px;margin:0 auto}');
-  w.document.write('.header{display:flex;align-items:center;gap:14px;padding-bottom:14px;border-bottom:2px solid #000;margin-bottom:20px}');
-  w.document.write('.logo{height:44px}');
-  w.document.write('h1{font-size:16px;font-weight:700;margin-bottom:16px;padding:8px 14px;border-left:4px solid #000;background:#f8f8f8}');
-  w.document.write('ol{padding-left:20px}');
-  w.document.write('li{margin-bottom:10px;line-height:1.6;font-size:13px}');
-  w.document.write('.footer{margin-top:30px;padding-top:14px;border-top:1px solid #ccc;font-size:11px;color:#555;text-align:center}');
-  w.document.write('@media print{body{padding:15px}@page{margin:15mm}}');
-  w.document.write('</style></head><body>');
-  w.document.write('<div class="header">');
-  w.document.write('<img class="logo" src="'+LOGO_B64+'">');
-  w.document.write('<div><div style="font-size:15px;font-weight:700">Parodontal Clinic</div>');
-  w.document.write('<div style="font-size:11px;color:#555">+373 78 766 688 · Chișinău, str. Nicolai Zelinski 15/3</div></div>');
-  w.document.write('</div>');
-  w.document.write('<h1>'+category+'</h1>');
-  w.document.write('<ol>');
-  items.forEach(function(rec){
-    w.document.write('<li>'+rec+'</li>');
-  });
-  w.document.write('</ol>');
-  w.document.write('<div class="footer">Data: '+new Date().toLocaleDateString('ro-RO',{day:'2-digit',month:'long',year:'numeric'})+'</div>');
-  w.document.write('</body></html>');
-  w.document.close();
-  w.focus();
-  setTimeout(function(){w.print();},400);
-}
-
-function copyAllRec(btn){
-  var text=btn.getAttribute('data-text');
-  navigator.clipboard.writeText(text).then(function(){
-    showNotif('✓ Toate recomandările copiate!');
-  }).catch(function(){
-    showNotif('Copierea nu a funcționat.',false);
-  });
+function printRecByLang(lang, idx){
+  var data=RECOMMENDATIONS_DATA[lang]||RECOMMENDATIONS_DATA.ro;
+  var cat=data[idx];
+  if(!cat) return;
+  printRec(cat.category, cat.items, cat.color);
 }
 // ---- END RECOMANDĂRI ----
 
