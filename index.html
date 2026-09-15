@@ -293,7 +293,6 @@ tr:last-child td{border-bottom:none}
             <span style="color:#94a3b8">/</span>
             <input id="p-bday-yy" type="text" maxlength="4" placeholder="AAAA" style="width:70px;text-align:center" oninput="this.value=this.value.replace(/[^0-9]/g,'')">
           </div>
-          <label>Nr. Cartelă medicală</label><input id="p-diag" placeholder="Ex: 001234">
           <label>Nr. Cartelă (căutare)</label><input id="p-cardnumber" placeholder="Ex: 118">
           <label>Limba vorbită</label>
           <select id="p-lang">
@@ -1785,7 +1784,7 @@ function updateStats(){
 
 function renderPatients(){
   var q=(document.getElementById('patient-search').value||'').toLowerCase();
-  var list=state.patients.filter(function(p){return!q||(p.name+' '+(p.phone||'')+' '+(p.diagnosis||'')+' '+(p.language||'')+' '+(p.card_number||'')).toLowerCase().includes(q);});
+  var list=state.patients.filter(function(p){return!q||(p.name+' '+(p.phone||'')+' '+(p.language||'')+' '+(p.card_number||'')).toLowerCase().includes(q);});
   if(!list.length){document.getElementById('patient-list').innerHTML='<div style="color:#94a3b8;font-size:13px;padding:10px">Niciun pacient găsit.</div>';return;}
   document.getElementById('patient-list').innerHTML=list.map(function(p){
     var sel=p.id===state.selectedPatientId?' selected':'';
@@ -1816,15 +1815,7 @@ function renderPatients(){
       +'>'
       +'<svg onclick="document.getElementById(\'phone-'+p.id+'\').focus()" width="12" height="12" fill="none" stroke="#94a3b8" stroke-width="2" viewBox="0 0 24 24" style="flex-shrink:0;cursor:pointer"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>'
       +'</div>'
-      +'<div style="display:flex;align-items:center;gap:4px;margin-top:4px" onclick="event.stopPropagation()">'
-      +'<input id="diag-'+p.id+'" type="text" value="'+esc(p.diagnosis||'')+'" placeholder="Nr. cartelă..." '
-      +'onkeydown="if(event.key===\'Enter\')savePatientDiag(\''+p.id+'\')" '
-      +'onblur="savePatientDiag(\''+p.id+'\')" '
-      +'style="flex:1;font-size:12px;color:#64748b;border:1px solid transparent;border-radius:6px;padding:3px 6px;background:transparent;outline:none;min-width:0;cursor:text" '
-      +'onfocus="this.style.borderColor=\'#0c3560\';this.style.background=\'#fff\'" '
-      +'>'
-      +'<svg onclick="document.getElementById(\'diag-'+p.id+'\').focus()" width="12" height="12" fill="none" stroke="#94a3b8" stroke-width="2" viewBox="0 0 24 24" style="flex-shrink:0;cursor:pointer"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>'
-      +'</div>'
+
       +'<div style="display:flex;align-items:center;gap:3px;margin-top:4px" onclick="event.stopPropagation()">'
       +'<span style="font-size:11px;color:#94a3b8">🎂</span>'
       +'<input id="bday-dd-'+p.id+'" type="text" maxlength="2" value="'+(p.birthdate?p.birthdate.split('-')[2]||'':'')+' " placeholder="ZZ"'
@@ -2089,12 +2080,12 @@ async function addPatient(){
   if(bddd.trim()&&bdmm.trim()&&bdyy.trim()&&bdyy.trim().length===4){
     birthdate=bdyy.trim()+'-'+bdmm.trim().padStart(2,'0')+'-'+bddd.trim().padStart(2,'0');
   }
-  var obj={name,phone:document.getElementById('p-phone').value,diagnosis:document.getElementById('p-diag').value,notes:document.getElementById('p-notes').value,birthdate:birthdate,language:(document.getElementById('p-lang')||{}).value||null,card_number:(document.getElementById('p-cardnumber')||{}).value||null};
+  var obj={name,phone:document.getElementById('p-phone').value,notes:document.getElementById('p-notes').value,birthdate:birthdate,language:(document.getElementById('p-lang')||{}).value||null,card_number:(document.getElementById('p-cardnumber')||{}).value||null};
   var{data,error}=await sb.from('patients').insert([obj]).select().single();
   if(error){showNotif('Eroare: '+error.message,false);return;}
   state.patients.push(data);
   state.patients.sort(function(a,b){return (a.name||'').localeCompare(b.name||'','ro');});
-  ['p-lastname','p-firstname','p-phone','p-bday-dd','p-bday-mm','p-bday-yy','p-diag','p-cardnumber','p-notes'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});var pl=document.getElementById('p-lang');if(pl)pl.value='';
+  ['p-lastname','p-firstname','p-phone','p-bday-dd','p-bday-mm','p-bday-yy','p-cardnumber','p-notes'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});var pl=document.getElementById('p-lang');if(pl)pl.value='';
   state.selectedPatientId=data.id;state.stages=[];state.stageItems={};state.activeStageId=null;
   populatePatientSelect();renderPdfPatientSelect();renderPatients();renderTreatment();updateStats();
   showNotif('✓ Pacient salvat!');
@@ -3813,7 +3804,7 @@ function renderRemindersList(){
     actions+='<button class="btn btn-danger" onclick="deleteReminder(\''+r.id+'\')" style="font-size:11px;padding:4px 10px">Șterge</button>';
     actions+='</div></div>';
 
-    return '<div class="rem-card '+cardClass+'">'      +'<div style="display:flex;align-items:start;justify-content:space-between;gap:8px;flex-wrap:wrap">'      +'<div style="flex:1">'      +'<div class="rem-patient">'+esc(pat.name||'—')        +(pat.phone?'<span style="font-size:11px;font-weight:400;color:#64748b;margin-left:8px">📞 '+esc(pat.phone)+'</span>':'')        +'</div>'      +'<div class="rem-type">'+esc(r.type)+'</div>'      +(r.note?'<div class="rem-note">'+esc(r.note)+'</div>':'')      +(pat.diagnosis?'<div style="font-size:11px;color:#64748b;margin-top:3px">📋 Nr. cartelă: '+esc(pat.diagnosis)+'</div>':'')      +planSummary      +'</div>'      +'<div style="text-align:right;flex-shrink:0">'      +statusLabel      +'<div class="rem-date" style="margin-top:4px">📅 '+d.toLocaleDateString('ro-RO',{day:'2-digit',month:'long',year:'numeric'})+'</div>'      +timeLabel      +'</div>'      +'</div>'      +actions      +'</div>';
+    return '<div class="rem-card '+cardClass+'">'      +'<div style="display:flex;align-items:start;justify-content:space-between;gap:8px;flex-wrap:wrap">'      +'<div style="flex:1">'      +'<div class="rem-patient">'+esc(pat.name||'—')        +(pat.phone?'<span style="font-size:11px;font-weight:400;color:#64748b;margin-left:8px">📞 '+esc(pat.phone)+'</span>':'')        +'</div>'      +'<div class="rem-type">'+esc(r.type)+'</div>'      +(r.note?'<div class="rem-note">'+esc(r.note)+'</div>':'')            +planSummary      +'</div>'      +'<div style="text-align:right;flex-shrink:0">'      +statusLabel      +'<div class="rem-date" style="margin-top:4px">📅 '+d.toLocaleDateString('ro-RO',{day:'2-digit',month:'long',year:'numeric'})+'</div>'      +timeLabel      +'</div>'      +'</div>'      +actions      +'</div>';
   }).join('');
 }
 
@@ -4201,7 +4192,7 @@ async function renderTrash(){
     var color=typeColors[item.type]||'#64748b';
     var deletedAt=new Date(item.deleted_at).toLocaleString('ro-RO',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
     var details='';
-    if(item.type==='patient') details='<div style="font-size:12px;color:#64748b;margin-top:2px">'+(d.phone?'📞 '+esc(d.phone)+'  ':'')+(d.diagnosis?'Nr. cartelă: '+esc(d.diagnosis):'')+'</div>';
+    if(item.type==='patient') details='<div style="font-size:12px;color:#64748b;margin-top:2px">'+(d.phone?'📞 '+esc(d.phone)+'  ':'')+(d.card_number?'Nr. cartelă: '+esc(d.card_number):'')+'</div>';
     if(item.type==='stage') details='<div style="font-size:12px;color:#64748b;margin-top:2px">Pacient ID: '+esc(d.patient_id||'')+'  Discount: '+(d.discount||0)+'%</div>';
     if(item.type==='stage_item') details='<div style="font-size:12px;color:#64748b;margin-top:2px">Preț: '+fmt(d.price||0)+(d.done?' · ✓ Efectuat':'')+'</div>';
     if(item.type==='receipt') details='<div style="font-size:12px;color:#64748b;margin-top:2px">Total: '+fmt(d.total||0)+' MDL</div>';
