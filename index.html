@@ -1785,7 +1785,7 @@ function updateStats(){
 
 function renderPatients(){
   var q=(document.getElementById('patient-search').value||'').toLowerCase();
-  var list=state.patients.filter(function(p){return!q||(p.name+' '+(p.phone||'')+' '+(p.diagnosis||'')+' '+(p.language||'')).toLowerCase().includes(q);});
+  var list=state.patients.filter(function(p){return!q||(p.name+' '+(p.phone||'')+' '+(p.diagnosis||'')+' '+(p.language||'')+' '+(p.card_number||'')).toLowerCase().includes(q);});
   if(!list.length){document.getElementById('patient-list').innerHTML='<div style="color:#94a3b8;font-size:13px;padding:10px">Niciun pacient găsit.</div>';return;}
   document.getElementById('patient-list').innerHTML=list.map(function(p){
     var sel=p.id===state.selectedPatientId?' selected':'';
@@ -1886,6 +1886,19 @@ function renderPatients(){
         :'')
       +'</div>';
   }).join('');
+}
+
+async function savePatientCardNumber(patId){
+  var input=document.getElementById('cardnum-'+patId);
+  if(!input) return;
+  var newCard=input.value.trim()||null;
+  var pat=state.patients.find(function(p){return p.id===patId;});
+  if(!pat||(pat.card_number||null)===(newCard)) return;
+  input.style.borderColor='transparent';input.style.background='transparent';
+  var{error}=await sb.from('patients').update({card_number:newCard}).eq('id',patId);
+  if(error){showNotif('Eroare: '+error.message,false);return;}
+  pat.card_number=newCard;
+  showNotif('✓ Nr. cartelă salvat!');
 }
 
 async function savePatientLang(patId){
