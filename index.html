@@ -294,6 +294,7 @@ tr:last-child td{border-bottom:none}
             <input id="p-bday-yy" type="text" maxlength="4" placeholder="AAAA" style="width:70px;text-align:center" oninput="this.value=this.value.replace(/[^0-9]/g,'')">
           </div>
           <label>Nr. Cartelă medicală</label><input id="p-diag" placeholder="Ex: 001234">
+          <label>Nr. Cartelă (căutare)</label><input id="p-cardnumber" placeholder="Ex: 118">
           <label>Limba vorbită</label>
           <select id="p-lang">
             <option value="">— Selectează —</option>
@@ -311,7 +312,7 @@ tr:last-child td{border-bottom:none}
           <div class="card-sub">Click pe pacient pentru a-l selecta</div>
           <div class="search-wrap">
             <svg class="search-icon" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
-            <input id="patient-search" placeholder="Caută după nume, telefon..." oninput="renderPatients()">
+            <input id="patient-search" placeholder="Caută după nume, telefon, nr. cartelă..." oninput="renderPatients()">
           </div>
           <div class="patient-grid" id="patient-list"><div class="loading">Se încarcă...</div></div>
         </div>
@@ -1784,7 +1785,7 @@ function updateStats(){
 
 function renderPatients(){
   var q=(document.getElementById('patient-search').value||'').toLowerCase();
-  var list=state.patients.filter(function(p){return!q||(p.name+' '+(p.phone||'')+' '+(p.diagnosis||'')).toLowerCase().includes(q);});
+  var list=state.patients.filter(function(p){return!q||(p.name+' '+(p.phone||'')+' '+(p.diagnosis||'')+' '+(p.language||'')).toLowerCase().includes(q);});
   if(!list.length){document.getElementById('patient-list').innerHTML='<div style="color:#94a3b8;font-size:13px;padding:10px">Niciun pacient găsit.</div>';return;}
   document.getElementById('patient-list').innerHTML=list.map(function(p){
     var sel=p.id===state.selectedPatientId?' selected':'';
@@ -1860,6 +1861,16 @@ function renderPatients(){
       +'<option value="Italiană"'+(p.language==="Italiană"?' selected':'')+'>🇮🇹 Italiană</option>'
       +'<option value="Altă limbă"'+(p.language==="Altă limbă"?' selected':'')+'>🌐 Altă limbă</option>'
       +'</select>'
+      +'</div>'
+      +'<div style="display:flex;align-items:center;gap:4px;margin-top:4px" onclick="event.stopPropagation()">'
+      +'<span style="font-size:11px;color:#94a3b8;white-space:nowrap">📋</span>'
+      +'<input id="cardnum-'+p.id+'" type="text" value="'+esc(p.card_number||'')+'" placeholder="Nr. cartelă..." '
+      +'onkeydown="if(event.key===\'Enter\')savePatientCardNumber(\''+p.id+'\')" '
+      +'onblur="savePatientCardNumber(\''+p.id+'\')" '
+      +'style="flex:1;font-size:12px;color:#0c3560;font-weight:600;border:1px solid transparent;border-radius:6px;padding:3px 6px;background:transparent;outline:none;min-width:0;cursor:text" '
+      +'onfocus="this.style.borderColor=\'#0c3560\';this.style.background=\'#fff\'" '
+      +'onblur2="this.style.borderColor=\'transparent\';this.style.background=\'transparent\'" '
+      +'>'
       +'</div>'
       +debtHtml
       +'</div>'
@@ -2065,12 +2076,12 @@ async function addPatient(){
   if(bddd.trim()&&bdmm.trim()&&bdyy.trim()&&bdyy.trim().length===4){
     birthdate=bdyy.trim()+'-'+bdmm.trim().padStart(2,'0')+'-'+bddd.trim().padStart(2,'0');
   }
-  var obj={name,phone:document.getElementById('p-phone').value,diagnosis:document.getElementById('p-diag').value,notes:document.getElementById('p-notes').value,birthdate:birthdate,language:(document.getElementById('p-lang')||{}).value||null};
+  var obj={name,phone:document.getElementById('p-phone').value,diagnosis:document.getElementById('p-diag').value,notes:document.getElementById('p-notes').value,birthdate:birthdate,language:(document.getElementById('p-lang')||{}).value||null,card_number:(document.getElementById('p-cardnumber')||{}).value||null};
   var{data,error}=await sb.from('patients').insert([obj]).select().single();
   if(error){showNotif('Eroare: '+error.message,false);return;}
   state.patients.push(data);
   state.patients.sort(function(a,b){return (a.name||'').localeCompare(b.name||'','ro');});
-  ['p-lastname','p-firstname','p-phone','p-bday-dd','p-bday-mm','p-bday-yy','p-diag','p-notes'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});var pl=document.getElementById('p-lang');if(pl)pl.value='';
+  ['p-lastname','p-firstname','p-phone','p-bday-dd','p-bday-mm','p-bday-yy','p-diag','p-cardnumber','p-notes'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});var pl=document.getElementById('p-lang');if(pl)pl.value='';
   state.selectedPatientId=data.id;state.stages=[];state.stageItems={};state.activeStageId=null;
   populatePatientSelect();renderPdfPatientSelect();renderPatients();renderTreatment();updateStats();
   showNotif('✓ Pacient salvat!');
